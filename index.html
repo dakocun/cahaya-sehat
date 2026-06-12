@@ -58,9 +58,10 @@ tr:hover td{background:#f8fafc}
 #nota-content{padding:20px 20px 12px}
 .nota-actions{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:#f8fafc;border-radius:0 0 12px 12px;flex-wrap:wrap}
 @media print{
+  @page{size:80mm auto;margin:0}
   body>*:not(#overlay){display:none!important}
   #overlay{display:block!important;background:none!important;position:static!important;padding:0!important}
-  .nota-box{box-shadow:none!important;max-height:none!important;border-radius:0!important}
+  .nota-box{box-shadow:none!important;max-height:none!important;border-radius:0!important;width:80mm!important;max-width:80mm!important}
   .nota-actions{display:none!important}
 }
 </style>
@@ -73,11 +74,11 @@ tr:hover td{background:#f8fafc}
   <div class="brand">&#128138; Cahaya Sehat</div>
   <div class="tabs">
     <div class="tab active" data-page="dashboard">Dashboard</div>
-    <div class="tab" data-page="stok">Stok</div>
-    <div class="tab" data-page="layanan">Layanan</div>
-    <div class="tab" data-page="jual">Penjualan</div>
     <div class="tab" data-page="belanja">Belanja</div>
-    <div class="tab" data-page="riwayat">Riwayat</div>
+    <div class="tab" data-page="layanan">Layanan</div>
+    <div class="tab" data-page="stok">Stok</div>
+    <div class="tab" data-page="jual">Penjualan</div>
+    <div class="tab" data-page="rekap">Rekap</div>
     <div class="tab" data-page="tes-nota">Tes Nota</div>
   </div>
 </nav>
@@ -177,17 +178,38 @@ tr:hover td{background:#f8fafc}
   </div>
 </div>
 
-<!-- RIWAYAT PENJUALAN -->
-<div id="page-riwayat" class="page">
+<!-- REKAP -->
+<div id="page-rekap" class="page">
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn btn-navy btn-sm rekap-period active-period" data-period="bulan">Bulan Ini</button>
+    <button class="btn btn-outline btn-sm rekap-period" data-period="minggu">7 Hari</button>
+    <button class="btn btn-outline btn-sm rekap-period" data-period="semua">Dari Awal</button>
+  </div>
+
+  <!-- Rekap Penjualan -->
   <div class="card">
-    <h2>&#128203; Riwayat Transaksi</h2>
-    <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
-      <input type="date" id="filter-tgl" style="width:auto">
-      <button id="btn-filter-semua" class="btn btn-outline btn-sm">Semua</button>
+    <h2>&#128722; Rekap Penjualan</h2>
+    <div class="stats" style="margin-bottom:12px">
+      <div class="stat"><div class="val" id="rek-trx">-</div><div class="lbl">Transaksi</div></div>
+      <div class="stat"><div class="val" id="rek-omzet">-</div><div class="lbl">Total Omzet</div></div>
+      <div class="stat"><div class="val" id="rek-untung">-</div><div class="lbl">Total Untung</div></div>
     </div>
     <div style="overflow-x:auto">
       <table><thead><tr><th>Waktu</th><th>Detail</th><th>Total</th><th>Untung</th><th></th></tr></thead>
-      <tbody id="tb-riwayat"><tr><td colspan="5" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
+      <tbody id="tb-rekap-jual"><tr><td colspan="5" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- Rekap Belanja -->
+  <div class="card">
+    <h2>&#128717; Rekap Pembelian</h2>
+    <div class="stats" style="margin-bottom:12px">
+      <div class="stat"><div class="val" id="rek-beli-trx">-</div><div class="lbl">Transaksi</div></div>
+      <div class="stat"><div class="val" id="rek-beli-total">-</div><div class="lbl">Total Belanja</div></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Item</th><th>Total</th></tr></thead>
+      <tbody id="tb-rekap-beli"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
     </div>
   </div>
 </div>
@@ -289,7 +311,7 @@ function showPage(id){
   if(id==="layanan")   loadLayanan();
   if(id==="jual")      Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("jual");renderJasa("jual");});
   if(id==="belanja")   { loadStok(); loadBelanja(); resetBelanjaForm(); }
-  if(id==="riwayat")   loadRiwayat();
+  if(id==="rekap")     loadRekap();
   if(id==="tes-nota")  Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("tes");renderJasa("tes");});
 }
 document.querySelectorAll(".tab").forEach(tab=>{
@@ -867,7 +889,7 @@ function tampilkanNota(items,total,noTrx,isTes){
   const tgl=new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
   const rows=items.map(i=>`<tr>
     <td style="padding:5px 0;font-size:13px">${esc(i.nama)}</td>
-    <td style="padding:5px 0;font-size:13px;text-align:center">${i.qty} ${esc(i.satuan||"")}</td>
+    <td style="padding:5px 0;font-size:13px;text-align:center">${i.qty}</td>
     <td style="padding:5px 0;font-size:13px;text-align:right">${rp(i.subtotal)}</td>
   </tr>`).join("");
   el("nota-content").innerHTML=`
@@ -902,24 +924,52 @@ el("btn-tutup").addEventListener("click",()=>el("overlay").classList.remove("sho
 el("btn-print").addEventListener("click",()=>window.print());
 el("btn-pdf").addEventListener("click",()=>{toast("Pilih 'Save as PDF' di dialog print");setTimeout(()=>window.print(),800);});
 
-// ── RIWAYAT ──────────────────────────────────────────────
-async function loadRiwayat(){
-  const tgl=el("filter-tgl").value;
-  let q;
-  if(tgl){
-    const s=new Date(tgl);s.setHours(0,0,0,0);
-    const e=new Date(tgl);e.setHours(23,59,59,999);
-    q=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(s)),where("waktu","<=",Timestamp.fromDate(e)),orderBy("waktu","desc"));
+// ── REKAP ─────────────────────────────────────────────────
+let rekapPeriod = "bulan";
+
+function getPeriodRange(period){
+  const now = new Date();
+  let start = new Date();
+  if(period==="bulan"){
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else if(period==="minggu"){
+    start = new Date(now); start.setDate(now.getDate()-6); start.setHours(0,0,0,0);
   } else {
-    q=query(collection(db,C_TRX),orderBy("waktu","desc"));
+    return null; // semua
   }
-  const snap=await getDocs(q);
-  const tb=el("tb-riwayat");
-  if(!snap.docs.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada transaksi</td></tr>';return;}
-  tb.innerHTML=snap.docs.map(d=>{
+  return start;
+}
+
+async function loadRekap(){
+  // Wire tombol period
+  document.querySelectorAll(".rekap-period").forEach(btn=>{
+    btn.onclick = ()=>{
+      rekapPeriod = btn.dataset.period;
+      document.querySelectorAll(".rekap-period").forEach(b=>{
+        b.className="btn btn-outline btn-sm rekap-period";
+      });
+      btn.className="btn btn-navy btn-sm rekap-period active-period";
+      loadRekap();
+    };
+  });
+
+  const start = getPeriodRange(rekapPeriod);
+  let qJual, qBeli;
+  if(start){
+    qJual = query(collection(db,C_TRX), where("waktu",">=",Timestamp.fromDate(start)), orderBy("waktu","desc"));
+    // belanja pakai field tanggal (string), filter manual
+  } else {
+    qJual = query(collection(db,C_TRX), orderBy("waktu","desc"));
+  }
+
+  // Rekap penjualan
+  const snapJual = await getDocs(qJual);
+  let omzet=0, untung=0;
+  const rowsJual = snapJual.docs.map(d=>{
     const dt=d.data();
     const wkt=dt.waktu?.toDate().toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})||"-";
     const detail=dt.items?.map(i=>(i.tipe==="jasa"?"&#129657; ":"")+esc(i.nama)+" x"+i.qty).join(", ")||"-";
+    omzet+=dt.total||0; untung+=dt.untung||0;
     return`<tr>
       <td style="font-size:12px">${wkt}</td>
       <td style="font-size:12px">${detail}</td>
@@ -927,10 +977,42 @@ async function loadRiwayat(){
       <td style="color:var(--green)">${rp(dt.untung)}</td>
       <td><button class="btn btn-outline btn-sm" data-cetak="${d.id}">&#128424;</button></td>
     </tr>`;
-  }).join("");
-  tb.querySelectorAll("[data-cetak]").forEach(btn=>{
+  });
+  el("rek-trx").textContent = snapJual.docs.length;
+  el("rek-omzet").textContent = rp(omzet);
+  el("rek-untung").textContent = rp(untung);
+  const tbJual = el("tb-rekap-jual");
+  tbJual.innerHTML = rowsJual.length
+    ? rowsJual.join("")
+    : '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada transaksi</td></tr>';
+  tbJual.querySelectorAll("[data-cetak]").forEach(btn=>{
     btn.addEventListener("click",()=>cetakUlang(btn.dataset.cetak));
   });
+
+  // Rekap belanja
+  const snapBeli = await getDocs(query(collection(db,C_BELI), orderBy("created","desc")));
+  let totalBeli=0;
+  const startStr = start ? start.toISOString().split("T")[0] : null;
+  const docsFiltered = startStr
+    ? snapBeli.docs.filter(d=>( d.data().tanggal||"") >= startStr)
+    : snapBeli.docs;
+  const rowsBeli = docsFiltered.map(d=>{
+    const dt=d.data();
+    const itemStr=dt.items?.map(i=>esc(i.nama)+" x"+i.qty).join(", ")||"-";
+    totalBeli+=dt.total||0;
+    return`<tr>
+      <td>${dt.tanggal||"-"}</td>
+      <td style="font-size:12px">${esc(dt.keterangan||"-")}</td>
+      <td style="font-size:12px">${itemStr}</td>
+      <td>${rp(dt.total)}</td>
+    </tr>`;
+  });
+  el("rek-beli-trx").textContent = docsFiltered.length;
+  el("rek-beli-total").textContent = rp(totalBeli);
+  const tbBeli = el("tb-rekap-beli");
+  tbBeli.innerHTML = rowsBeli.length
+    ? rowsBeli.join("")
+    : '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Belum ada pembelian</td></tr>';
 }
 
 async function cetakUlang(id){
@@ -938,9 +1020,6 @@ async function cetakUlang(id){
   if(!snap.exists()){toast("Data tidak ditemukan");return;}
   const dt=snap.data();tampilkanNota(dt.items,dt.total,id,false);
 }
-
-el("filter-tgl").addEventListener("change",loadRiwayat);
-el("btn-filter-semua").addEventListener("click",()=>{el("filter-tgl").value="";loadRiwayat();});
 
 // ── DASHBOARD ────────────────────────────────────────────
 async function loadDashboard(){
