@@ -51,7 +51,7 @@ tr:hover td{background:#f8fafc}
 .sub-bayar-btn{padding:4px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;background:#fff;color:var(--text)}
 .sub-bayar-btn.active{background:var(--teal);color:#fff;border-color:var(--teal)}
 .item-row{display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg);border-radius:8px;margin-bottom:8px}
-.item-row select{flex:2;min-width:0}
+.item-row select{flex:1;min-width:0;font-size:13px}
 .item-row input{flex:0 0 70px;width:70px}
 .item-info{flex:1.5;font-size:12px;color:var(--muted)}
 .section-label{font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px;margin-top:4px;display:flex;align-items:center;gap:6px}
@@ -63,11 +63,13 @@ tr:hover td{background:#f8fafc}
 #nota-content{padding:20px 20px 12px}
 .nota-actions{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:#f8fafc;border-radius:0 0 12px 12px;flex-wrap:wrap}
 @media print{
-  @page{size:80mm auto;margin:0}
+  @page{size:80mm auto;margin:0mm}
+  html,body{width:80mm!important;margin:0!important;padding:0!important}
   body>*:not(#overlay){display:none!important}
-  #overlay{display:block!important;background:none!important;position:static!important;padding:0!important}
-  .nota-box{box-shadow:none!important;max-height:none!important;border-radius:0!important;width:80mm!important;max-width:80mm!important}
+  #overlay{display:block!important;background:none!important;position:fixed!important;inset:0!important;padding:0!important;align-items:flex-start!important}
+  .nota-box{box-shadow:none!important;max-height:none!important;border-radius:0!important;width:80mm!important;max-width:80mm!important;overflow:visible!important}
   .nota-actions{display:none!important}
+  #nota-content img{max-width:76mm!important}
 }
 </style>
 </head>
@@ -103,10 +105,10 @@ tr:hover td{background:#f8fafc}
     <button class="btn btn-navy btn-sm dash-period active-period" data-dp="hari">Hari Ini</button>
     <button class="btn btn-outline btn-sm dash-period" data-dp="7hari">7 Hari</button>
     <button class="btn btn-outline btn-sm dash-period" data-dp="bulan">
-      <span id="dp-bulan-label">Bulan Ini</span>
+      <span id="dp-bulan-label">Pilih Bulan</span>
     </button>
     <button class="btn btn-outline btn-sm dash-period" data-dp="semua">Dari Awal</button>
-    <div id="dp-bulan-picker" style="display:none;gap:6px;align-items:center">
+    <div id="dp-bulan-picker" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px">
       <select id="dp-bulan-sel" style="width:auto;padding:5px 8px;font-size:12px">
         <option value="0">Januari</option><option value="1">Februari</option>
         <option value="2">Maret</option><option value="3">April</option>
@@ -280,10 +282,25 @@ tr:hover td{background:#f8fafc}
 
 <!-- REKAP -->
 <div id="page-rekap" class="page">
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+  <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
     <button class="btn btn-navy btn-sm rekap-period active-period" data-period="bulan">Bulan Ini</button>
     <button class="btn btn-outline btn-sm rekap-period" data-period="minggu">7 Hari</button>
+    <button class="btn btn-outline btn-sm rekap-period" data-period="pilih">
+      <span id="rekap-bulan-label">Pilih Bulan</span>
+    </button>
     <button class="btn btn-outline btn-sm rekap-period" data-period="semua">Dari Awal</button>
+  </div>
+  <div id="rekap-bulan-picker" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+    <select id="rekap-bulan-sel" style="width:auto;padding:5px 8px;font-size:12px">
+      <option value="0">Januari</option><option value="1">Februari</option>
+      <option value="2">Maret</option><option value="3">April</option>
+      <option value="4">Mei</option><option value="5">Juni</option>
+      <option value="6">Juli</option><option value="7">Agustus</option>
+      <option value="8">September</option><option value="9">Oktober</option>
+      <option value="10">November</option><option value="11">Desember</option>
+    </select>
+    <select id="rekap-tahun-sel" style="width:auto;padding:5px 8px;font-size:12px"></select>
+    <button class="btn btn-teal btn-sm" id="btn-rekap-bulan-go">Tampilkan</button>
   </div>
 
   <!-- Rekap Penjualan -->
@@ -879,22 +896,20 @@ function renderItems(mode){
 
     // Baris harga jual (editable di mode jual)
     let hjualRow="";
-    if(mode==="jual" && o){
-      hjualRow=`<div style="display:flex;align-items:center;gap:4px;margin-top:4px">
-        <span style="font-size:11px;color:var(--muted)">H.Jual:</span>
+    if(o){
+      hjualRow=`<div style="display:flex;align-items:center;gap:3px">
         <input type="number" class="hjual-input" value="${hjual}" min="0"
-          style="width:85px;padding:3px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600">
-        <span style="font-size:10px;color:var(--teal)">${item.harga_jual_override!=null&&item.harga_jual_override>0?"✏️":"●"}</span>
+          style="width:80px;padding:5px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600;text-align:right">
+        <span class="hjual-lbl" style="font-size:10px;color:var(--teal);flex-shrink:0">${item.harga_jual_override!=null&&item.harga_jual_override>0?"✏️":"Rp"}</span>
       </div>`;
     }
 
-    return`<div class="item-row" data-idx="${i}" style="flex-wrap:wrap;align-items:center">
-      <select class="sel-obat" style="flex:2;min-width:140px"><option value="">-- Pilih Obat --</option>${opts}</select>
-      <div style="display:flex;flex-direction:column;align-items:flex-start">
-        <input type="number" class="qty-input" value="${item.qty}" min="1" style="width:48px;padding:6px 8px;font-size:13px;text-align:center">
-        ${hjualRow}
-      </div>
-      <button class="btn btn-outline btn-sm del-item">&#10005;</button>
+    return`<div class="item-row" data-idx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
+      <select class="sel-obat" style="flex:1;min-width:0;font-size:13px"><option value="">-- Pilih --</option>${opts}</select>
+      <input type="number" class="qty-input" value="${item.qty}" min="1"
+        style="width:38px;padding:5px 4px;font-size:13px;text-align:center;flex-shrink:0">
+      <div style="flex-shrink:0">${hjualRow}</div>
+      <button class="btn btn-outline btn-sm del-item" style="flex-shrink:0;padding:5px 8px">&#10005;</button>
     </div>`;
   }).join("");
 
@@ -922,19 +937,14 @@ function renderItems(mode){
       arr.splice(i,1);if(!arr.length)arr.push({id:"",qty:1});renderItems(mode);
     });
 
-    // Wire harga jual manual input (mode jual saja)
+    // Wire harga jual manual input (semua mode)
     const hjualInp=row.querySelector(".hjual-input");
     if(hjualInp){
       hjualInp.addEventListener("input",function(){
         arr[i].harga_jual_override=parseFloat(this.value)||0;
         hitungTotalJual(mode);
-        const o=stokList.find(x=>x.id===arr[i].id);
-        const lbl=row.querySelector('[style*="10px;color:var(--teal)"]');
-        if(lbl) lbl.textContent="✏️ manual";
-        if(o){
-          const untungEl=row.querySelector('[style*="color:var(--green)"]');
-          if(untungEl) untungEl.textContent="Untung: "+rp((arr[i].harga_jual_override-o.harga_beli)*arr[i].qty);
-        }
+        const lbl=row.querySelector(".hjual-lbl");
+        if(lbl) lbl.textContent="✏️";
       });
     }
   });
@@ -1068,15 +1078,16 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   }
   const totalBayar=Math.max(0,total-diskon);
   const bayar=getBayarInfo("jual");
-  const ref=await addDoc(collection(db,C_TRX),{items:detail,total:totalBayar,subtotal:total,diskon,untung,pembeli,bayar,waktu:Timestamp.now()});
+  const kembalian=getKembalian("jual");
+  const ref=await addDoc(collection(db,C_TRX),{items:detail,total:totalBayar,subtotal:total,diskon,untung,pembeli,bayar,kembalian,waktu:Timestamp.now()});
   toast("Transaksi disimpan!");
-  tampilkanNota(detail,totalBayar,ref.id,false,pembeli,diskon,total,bayar);
+  tampilkanNota(detail,totalBayar,ref.id,false,pembeli,diskon,total,bayar,kembalian);
   jualItems=[{id:"",qty:1}];jasaItems=[];
   el("jual-pembeli").value="";el("jual-diskon").value="";
   // Reset bayar
-  el("jual-bayar-btns").querySelectorAll(".bayar-btn").forEach((b,i)=>{b.className="btn btn-outline btn-sm bayar-btn"+(i===0?" active-bayar":"");});
-  el("jual-bayar-btns").dataset.selected="TUNAI";
-  el("jual-bayar-detail").style.display="none";el("jual-bayar-detail").innerHTML="";
+  // Re-trigger TUNAI
+  const tunaiBtn=el("jual-bayar-btns").querySelector('[data-bayar="TUNAI"]');
+  if(tunaiBtn) tunaiBtn.click();
   hitungTotalJual("jual");
   loadStok();
 });
@@ -1102,11 +1113,12 @@ el("btn-proses-tes").addEventListener("click",()=>{
   });
   const totalBayar=Math.max(0,subtotal-diskon);
   const bayar=getBayarInfo("tes");
-  tampilkanNota([...detailObat,...detailJasa],totalBayar,"TES-"+Date.now(),true,pembeli,diskon,subtotal,bayar);
+  const kembalian=getKembalian("tes");
+  tampilkanNota([...detailObat,...detailJasa],totalBayar,"TES-"+Date.now(),true,pembeli,diskon,subtotal,bayar,kembalian);
 });
 
 // ── NOTA ─────────────────────────────────────────────────
-function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,bayar="TUNAI"){
+function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,bayar="TUNAI",kembalian=null){
   const tgl=new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
   const rows=items.map(i=>`<tr>
     <td style="padding:5px 0;font-size:13px">${esc(i.nama)}</td>
@@ -1115,15 +1127,23 @@ function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,ba
   </tr>`).join("");
 
   const diskonRow = diskon>0 ? `
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:#666;margin-top:6px">
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-top:6px">
       <span>Subtotal</span><span>${rp(subtotal||total)}</span>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--red);margin-top:4px">
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:#e11d48;margin-top:4px">
       <span>Potongan</span><span>- ${rp(diskon)}</span>
     </div>` : "";
 
-  const pembeliRow = `${pembeli?`<div style="font-size:12px;color:#666;margin-top:4px">Kepada: <strong>${esc(pembeli)}</strong></div>`:""}
-    <div style="font-size:12px;color:#666;margin-top:4px">Bayar: <strong>${bayar||"TUNAI"}</strong></div>`;
+  const kembalianRow = (kembalian!=null&&kembalian>=0) ? `
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:#555;margin-top:6px">
+      <span>Dibayar</span><span>${rp(total+(kembalian||0))}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:#0d9488;margin-top:2px">
+      <span>Kembalian</span><span>${rp(kembalian)}</span>
+    </div>` : "";
+
+  const pembeliRow = pembeli
+    ? `<div style="font-size:12px;color:#555;margin-top:3px">Kepada: <strong>${pembeli.toUpperCase()}</strong></div>` : "";
 
   el("nota-content").innerHTML=`
     <div style="text-align:center;padding-bottom:14px;border-bottom:1.5px dashed #bbb">
@@ -1150,8 +1170,12 @@ function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,ba
         <span style="font-size:14px;font-weight:600;color:#1e3a5f">TOTAL BAYAR</span>
         <span style="font-size:20px;font-weight:700;color:#1e3a5f">${rp(total)}</span>
       </div>
+      ${kembalianRow}
     </div>
-    <div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px dashed #ccc;font-size:13px;color:#555;font-style:italic;padding-bottom:4px">
+    <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #ccc;font-size:12px;color:#666">
+      <span>Pembayaran: <strong>${bayar||"TUNAI"}</strong></span>
+    </div>
+    <div style="text-align:center;margin-top:12px;padding-top:10px;border-top:1px dashed #ccc;font-size:13px;color:#555;font-style:italic;padding-bottom:4px">
       Terima Kasih, Lekas Sehat Kembali &#127807;
     </div>`;
   el("overlay").classList.add("show");
@@ -1163,40 +1187,75 @@ el("btn-pdf").addEventListener("click",()=>{toast("Pilih 'Save as PDF' di dialog
 
 // ── REKAP ─────────────────────────────────────────────────
 let rekapPeriod = "bulan";
+let rekapBulan = new Date().getMonth();
+let rekapTahun = new Date().getFullYear();
+let rekapWired = false;
 
-function getPeriodRange(period){
-  const now = new Date();
-  let start = new Date();
-  if(period==="bulan"){
-    start = new Date(now.getFullYear(), now.getMonth(), 1);
-  } else if(period==="minggu"){
-    start = new Date(now); start.setDate(now.getDate()-6); start.setHours(0,0,0,0);
-  } else {
-    return null; // semua
+function getRekapRange(){
+  const now=new Date();
+  if(rekapPeriod==="bulan"){
+    return new Date(now.getFullYear(),now.getMonth(),1);
+  } else if(rekapPeriod==="minggu"){
+    const s=new Date();s.setDate(s.getDate()-6);s.setHours(0,0,0,0);return s;
+  } else if(rekapPeriod==="pilih"){
+    return new Date(rekapTahun,rekapBulan,1);
   }
-  return start;
+  return null;
 }
 
 async function loadRekap(){
-  // Wire tombol period
-  document.querySelectorAll(".rekap-period").forEach(btn=>{
-    btn.onclick = ()=>{
-      rekapPeriod = btn.dataset.period;
-      document.querySelectorAll(".rekap-period").forEach(b=>{
-        b.className="btn btn-outline btn-sm rekap-period";
-      });
-      btn.className="btn btn-navy btn-sm rekap-period active-period";
-      loadRekap();
-    };
-  });
+  if(!rekapWired){
+    rekapWired=true;
+    // Isi tahun
+    const tSel=el("rekap-tahun-sel");
+    for(let y=new Date().getFullYear();y>=2024;y--){
+      const opt=document.createElement("option");
+      opt.value=y;opt.text=y;tSel.appendChild(opt);
+    }
+    el("rekap-bulan-sel").value=rekapBulan;
+    el("rekap-tahun-sel").value=rekapTahun;
 
-  const start = getPeriodRange(rekapPeriod);
-  let qJual, qBeli;
+    document.querySelectorAll(".rekap-period").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        rekapPeriod=btn.dataset.period;
+        document.querySelectorAll(".rekap-period").forEach(b=>b.className="btn btn-outline btn-sm rekap-period");
+        btn.className="btn btn-navy btn-sm rekap-period active-period";
+        const picker=el("rekap-bulan-picker");
+        if(rekapPeriod==="pilih"){
+          picker.style.display="flex";
+        } else {
+          picker.style.display="none";
+          loadRekapData();
+        }
+      });
+    });
+
+    el("btn-rekap-bulan-go").addEventListener("click",()=>{
+      rekapBulan=parseInt(el("rekap-bulan-sel").value);
+      rekapTahun=parseInt(el("rekap-tahun-sel").value);
+      const nm=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+      el("rekap-bulan-label").textContent=nm[rekapBulan]+" "+rekapTahun;
+      loadRekapData();
+    });
+  }
+
+  loadRekapData();
+}
+
+async function loadRekapData(){
+  const start = getRekapRange();
+  let qJual;
   if(start){
-    qJual = query(collection(db,C_TRX), where("waktu",">=",Timestamp.fromDate(start)), orderBy("waktu","desc"));
-    // belanja pakai field tanggal (string), filter manual
+    const endOfPeriod=new Date(start);
+    if(rekapPeriod==="pilih"||rekapPeriod==="bulan"){
+      endOfPeriod.setMonth(endOfPeriod.getMonth()+1);endOfPeriod.setDate(0);endOfPeriod.setHours(23,59,59,999);
+      qJual=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(start)),where("waktu","<=",Timestamp.fromDate(endOfPeriod)),orderBy("waktu","desc"));
+    } else {
+      const e=new Date();e.setHours(23,59,59,999);
+      qJual=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(start)),where("waktu","<=",Timestamp.fromDate(e)),orderBy("waktu","desc"));
+    }
   } else {
-    qJual = query(collection(db,C_TRX), orderBy("waktu","desc"));
+    qJual=query(collection(db,C_TRX),orderBy("waktu","desc"));
   }
 
   // Rekap penjualan
@@ -1256,7 +1315,7 @@ async function cetakUlang(id){
   const snap=await getDoc(doc(db,C_TRX,id));
   if(!snap.exists()){toast("Data tidak ditemukan");return;}
   const dt=snap.data();
-  tampilkanNota(dt.items,dt.total,id,false,dt.pembeli||"",dt.diskon||0,dt.subtotal||dt.total,dt.bayar||"TUNAI");
+  tampilkanNota(dt.items,dt.total,id,false,dt.pembeli||"",dt.diskon||0,dt.subtotal||dt.total,dt.bayar||"TUNAI",dt.kembalian??null);
 }
 
 // ── DASHBOARD ────────────────────────────────────────────
@@ -1279,7 +1338,7 @@ function getDashRange(){
     const e=new Date(dashTahun,dashBulan+1,0,23,59,59,999);
     return{s,e};
   }
-  return null;
+  return null; // semua
 }
 
 async function loadDashboard(){
@@ -1313,6 +1372,9 @@ async function loadDashboard(){
         const picker=el("dp-bulan-picker");
         if(dashPeriod==="bulan"){
           picker.style.display="flex";
+          // Set default ke bulan & tahun saat ini jika belum dipilih
+          el("dp-bulan-sel").value=dashBulan;
+          el("dp-tahun-sel").value=dashTahun;
         } else {
           picker.style.display="none";
           loadDashStat();
@@ -1325,6 +1387,7 @@ async function loadDashboard(){
       dashTahun=parseInt(el("dp-tahun-sel").value);
       const nm=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
       el("dp-bulan-label").textContent=nm[dashBulan]+" "+dashTahun;
+      el("dp-bulan-picker").style.display="none";
       loadDashStat();
     });
   }
@@ -1387,43 +1450,73 @@ function wireBayarBtns(mode){
   const wrap = el(mode+"-bayar-btns");
   const detail = el(mode+"-bayar-detail");
   if(!wrap) return;
-  let selected = "TUNAI";
-  let subSelected = "";
+
+  // Set default
+  wrap.dataset.selected="TUNAI";
+  detail.dataset.selected="";
 
   wrap.querySelectorAll(".bayar-btn").forEach(btn=>{
     btn.addEventListener("click",()=>{
       wrap.querySelectorAll(".bayar-btn").forEach(b=>b.className="btn btn-outline btn-sm bayar-btn");
       btn.className="btn btn-navy btn-sm bayar-btn active-bayar";
-      selected=btn.dataset.bayar;
-      wrap.dataset.selected=selected;
-      subSelected="";
+      const sel=btn.dataset.bayar;
+      wrap.dataset.selected=sel;
       detail.dataset.selected="";
 
-      if(selected==="QRIS"){
+      if(sel==="TUNAI"){
         detail.style.display="flex";
-        detail.innerHTML=QRIS_LIST.map(s=>`<button class="sub-bayar-btn" data-sub="${s}">${s}</button>`).join("");
-      } else if(selected==="TRANSFER"){
+        detail.innerHTML=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--muted);margin-bottom:0">Bayar:</label>
+          <input type="number" id="${mode}-tunai-bayar" min="0"
+            style="width:120px;padding:5px 8px;font-size:13px;border:1.5px solid var(--border);border-radius:7px"
+            oninput="hitungKembalian('${mode}')">
+          <span style="font-size:12px;color:var(--muted)">Kembalian:</span>
+          <span id="${mode}-kembalian" style="font-size:14px;font-weight:700;color:var(--teal)">-</span>
+        </div>`;
+      } else if(sel==="TRANSFER"){
         detail.style.display="flex";
         detail.innerHTML=TRANSFER_LIST.map(s=>`<button class="sub-bayar-btn" data-sub="${s}">${s}</button>`).join("");
+        detail.querySelectorAll(".sub-bayar-btn").forEach(sb=>{
+          sb.addEventListener("click",()=>{
+            detail.querySelectorAll(".sub-bayar-btn").forEach(b=>b.className="sub-bayar-btn");
+            sb.className="sub-bayar-btn active";
+            detail.dataset.selected=sb.dataset.sub;
+          });
+        });
       } else {
+        // QRIS - langsung, tidak ada breakdown
         detail.style.display="none";
         detail.innerHTML="";
       }
-
-      detail.querySelectorAll(".sub-bayar-btn").forEach(sb=>{
-        sb.addEventListener("click",()=>{
-          detail.querySelectorAll(".sub-bayar-btn").forEach(b=>b.className="sub-bayar-btn");
-          sb.className="sub-bayar-btn active";
-          subSelected=sb.dataset.sub;
-          detail.dataset.selected=subSelected;
-        });
-      });
     });
   });
+
+  // Trigger TUNAI by default
+  wrap.querySelector('[data-bayar="TUNAI"]').click();
 }
 
-wireBayarBtns("jual");
-wireBayarBtns("tes");
+
+function hitungKembalian(mode){
+  const totalEl=el(mode+"-total");
+  const total=parseInt((totalEl?.textContent||"0").replace(/\D/g,""))||0;
+  const bayarEl=el(mode+"-tunai-bayar");
+  const bayar=parseFloat(bayarEl?.value)||0;
+  const kembalianEl=el(mode+"-kembalian");
+  if(!kembalianEl) return;
+  if(bayar<=0){ kembalianEl.textContent="-"; return; }
+  const kembalian=bayar-total;
+  kembalianEl.textContent=kembalian>=0?rp(kembalian):"Kurang "+rp(-kembalian);
+  kembalianEl.style.color=kembalian>=0?"var(--teal)":"var(--red)";
+}
+
+function getKembalian(mode){
+  const totalEl=el(mode+"-total");
+  const total=parseInt((totalEl?.textContent||"0").replace(/\D/g,""))||0;
+  const bayarEl=el(mode+"-tunai-bayar");
+  const bayar=parseFloat(bayarEl?.value)||0;
+  if(bayar<=0) return null;
+  return bayar-total;
+}
 
 function getBayarInfo(mode){
   const wrap=el(mode+"-bayar-btns");
