@@ -63,13 +63,16 @@ tr:hover td{background:#f8fafc}
 #nota-content{padding:20px 20px 12px}
 .nota-actions{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:#f8fafc;border-radius:0 0 12px 12px;flex-wrap:wrap}
 @media print{
-  @page{size:80mm auto;margin:0mm}
-  html,body{width:80mm!important;margin:0!important;padding:0!important}
-  body>*:not(#overlay){display:none!important}
-  #overlay{display:block!important;background:none!important;position:fixed!important;inset:0!important;padding:0!important;align-items:flex-start!important}
-  .nota-box{box-shadow:none!important;max-height:none!important;border-radius:0!important;width:80mm!important;max-width:80mm!important;overflow:visible!important}
+  @page{size:80mm auto;margin:0}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html{width:80mm!important}
+  body{width:80mm!important;margin:0!important;padding:0!important;background:#fff!important}
+  body>*{display:none!important}
+  #overlay{display:block!important;position:static!important;background:none!important;padding:0!important;width:80mm!important}
+  .nota-box{width:80mm!important;max-width:80mm!important;box-shadow:none!important;border-radius:0!important;max-height:none!important;overflow:visible!important}
   .nota-actions{display:none!important}
-  #nota-content img{max-width:76mm!important}
+  #nota-content{padding:8px!important}
+  #nota-content img{max-width:72mm!important;width:72mm!important}
 }
 </style>
 </head>
@@ -104,9 +107,7 @@ tr:hover td{background:#f8fafc}
     <span style="font-size:12px;color:var(--muted);font-weight:500">Periode:</span>
     <button class="btn btn-navy btn-sm dash-period active-period" data-dp="hari">Hari Ini</button>
     <button class="btn btn-outline btn-sm dash-period" data-dp="7hari">7 Hari</button>
-    <button class="btn btn-outline btn-sm dash-period" data-dp="bulan">
-      <span id="dp-bulan-label">Pilih Bulan</span>
-    </button>
+    <button class="btn btn-outline btn-sm dash-period" data-dp="bulan">Bulan</button>
     <button class="btn btn-outline btn-sm dash-period" data-dp="semua">Dari Awal</button>
     <div id="dp-bulan-picker" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px">
       <select id="dp-bulan-sel" style="width:auto;padding:5px 8px;font-size:12px">
@@ -285,22 +286,19 @@ tr:hover td{background:#f8fafc}
   <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
     <button class="btn btn-navy btn-sm rekap-period active-period" data-period="bulan">Bulan Ini</button>
     <button class="btn btn-outline btn-sm rekap-period" data-period="minggu">7 Hari</button>
-    <button class="btn btn-outline btn-sm rekap-period" data-period="pilih">
-      <span id="rekap-bulan-label">Pilih Bulan</span>
-    </button>
+    <button class="btn btn-outline btn-sm rekap-period" data-period="pilih">Bulan</button>
     <button class="btn btn-outline btn-sm rekap-period" data-period="semua">Dari Awal</button>
-  </div>
-  <div id="rekap-bulan-picker" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-    <select id="rekap-bulan-sel" style="width:auto;padding:5px 8px;font-size:12px">
-      <option value="0">Januari</option><option value="1">Februari</option>
-      <option value="2">Maret</option><option value="3">April</option>
-      <option value="4">Mei</option><option value="5">Juni</option>
-      <option value="6">Juli</option><option value="7">Agustus</option>
-      <option value="8">September</option><option value="9">Oktober</option>
-      <option value="10">November</option><option value="11">Desember</option>
-    </select>
-    <select id="rekap-tahun-sel" style="width:auto;padding:5px 8px;font-size:12px"></select>
-    <button class="btn btn-teal btn-sm" id="btn-rekap-bulan-go">Tampilkan</button>
+    <div id="rekap-bulan-picker" style="display:none;gap:6px;align-items:center;flex-wrap:wrap">
+      <select id="rekap-bulan-sel" style="width:auto;padding:5px 8px;font-size:12px">
+        <option value="0">Januari</option><option value="1">Februari</option>
+        <option value="2">Maret</option><option value="3">April</option>
+        <option value="4">Mei</option><option value="5">Juni</option>
+        <option value="6">Juli</option><option value="7">Agustus</option>
+        <option value="8">September</option><option value="9">Oktober</option>
+        <option value="10">November</option><option value="11">Desember</option>
+      </select>
+      <select id="rekap-tahun-sel" style="width:auto;padding:5px 8px;font-size:12px"></select>
+    </div>
   </div>
 
   <!-- Rekap Penjualan -->
@@ -1223,6 +1221,9 @@ async function loadRekap(){
         const picker=el("rekap-bulan-picker");
         if(rekapPeriod==="pilih"){
           picker.style.display="flex";
+          el("rekap-bulan-sel").value=rekapBulan;
+          el("rekap-tahun-sel").value=rekapTahun;
+          loadRekapData();
         } else {
           picker.style.display="none";
           loadRekapData();
@@ -1230,11 +1231,12 @@ async function loadRekap(){
       });
     });
 
-    el("btn-rekap-bulan-go").addEventListener("click",()=>{
+    el("rekap-bulan-sel").addEventListener("change",()=>{
       rekapBulan=parseInt(el("rekap-bulan-sel").value);
+      loadRekapData();
+    });
+    el("rekap-tahun-sel").addEventListener("change",()=>{
       rekapTahun=parseInt(el("rekap-tahun-sel").value);
-      const nm=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
-      el("rekap-bulan-label").textContent=nm[rekapBulan]+" "+rekapTahun;
       loadRekapData();
     });
   }
@@ -1372,9 +1374,9 @@ async function loadDashboard(){
         const picker=el("dp-bulan-picker");
         if(dashPeriod==="bulan"){
           picker.style.display="flex";
-          // Set default ke bulan & tahun saat ini jika belum dipilih
           el("dp-bulan-sel").value=dashBulan;
           el("dp-tahun-sel").value=dashTahun;
+          loadDashStat();
         } else {
           picker.style.display="none";
           loadDashStat();
@@ -1382,12 +1384,12 @@ async function loadDashboard(){
       });
     });
 
-    el("btn-dp-bulan-go").addEventListener("click",()=>{
+    el("dp-bulan-sel").addEventListener("change",()=>{
       dashBulan=parseInt(el("dp-bulan-sel").value);
+      loadDashStat();
+    });
+    el("dp-tahun-sel").addEventListener("change",()=>{
       dashTahun=parseInt(el("dp-tahun-sel").value);
-      const nm=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
-      el("dp-bulan-label").textContent=nm[dashBulan]+" "+dashTahun;
-      el("dp-bulan-picker").style.display="none";
       loadDashStat();
     });
   }
@@ -1545,6 +1547,8 @@ async function seedLayanan(){
 }
 
 seedLayanan().then(()=>loadDashboard());
+wireBayarBtns("jual");
+wireBayarBtns("tes");
 </script>
 </body>
 </html>
