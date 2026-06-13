@@ -169,17 +169,30 @@ tr:hover td{background:#f8fafc}
 <div id="page-jual" class="page">
   <div class="card">
     <h2>&#128722; Penjualan</h2>
+    <div class="field" style="margin-bottom:12px">
+      <label>Nama Pembeli <span style="font-size:11px;color:var(--muted)">(opsional)</span></label>
+      <input id="jual-pembeli" type="text" placeholder="Kosongkan jika tidak perlu">
+    </div>
     <div class="section-label">&#128138; Obat</div>
     <div id="jual-wrap"></div>
     <button id="btn-tambah-jual" class="btn btn-outline btn-sm" style="margin-bottom:16px">+ Tambah Obat</button>
     <div class="section-label">&#129657; Jasa Layanan</div>
     <div id="jasa-wrap"></div>
     <button id="btn-tambah-jasa" class="btn btn-outline btn-sm" style="margin-bottom:16px">+ Tambah Layanan</button>
-    <div style="background:var(--bg);border-radius:8px;padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div><div style="font-size:12px;color:var(--muted)">Total</div>
-           <div style="font-size:24px;font-weight:700;color:var(--navy)" id="jual-total">Rp 0</div></div>
-      <div style="text-align:right"><div style="font-size:12px;color:var(--muted)">Est. Untung</div>
-           <div style="font-size:18px;font-weight:700;color:var(--green)" id="jual-untung">Rp 0</div></div>
+    <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;color:var(--muted)">Subtotal</div>
+        <div style="font-size:18px;font-weight:700;color:var(--navy)" id="jual-subtotal">Rp 0</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <label style="font-size:13px;color:var(--muted);white-space:nowrap;margin-bottom:0">Potongan (Rp)</label>
+        <input id="jual-diskon" type="number" min="0" placeholder="0"
+          style="width:130px;padding:6px 10px;font-size:13px">
+        <div style="flex:1;text-align:right">
+          <div style="font-size:12px;color:var(--muted)">Total Bayar</div>
+          <div style="font-size:22px;font-weight:700;color:var(--teal)" id="jual-total">Rp 0</div>
+        </div>
+      </div>
     </div>
     <div style="display:flex;gap:10px">
       <button id="btn-proses-jual" class="btn btn-teal" style="flex:1">&#9989; Simpan &amp; Cetak Nota</button>
@@ -253,15 +266,30 @@ tr:hover td{background:#f8fafc}
 <div id="page-tes-nota" class="page">
   <div class="card" style="border:2px dashed var(--yellow)">
     <h2>&#128424;&#65039; Tes Nota <span style="font-size:11px;font-weight:400;color:var(--yellow)">(Simulasi &mdash; tidak mengubah stok)</span></h2>
+    <div class="field" style="margin-bottom:12px">
+      <label>Nama Pembeli <span style="font-size:11px;color:var(--muted)">(opsional)</span></label>
+      <input id="tes-pembeli" type="text" placeholder="Kosongkan jika tidak perlu">
+    </div>
     <div class="section-label">&#128138; Obat</div>
     <div id="tes-wrap"></div>
     <button id="btn-tambah-tes" class="btn btn-outline btn-sm" style="margin-bottom:16px">+ Tambah Obat</button>
     <div class="section-label">&#129657; Jasa Layanan</div>
     <div id="tes-jasa-wrap"></div>
     <button id="btn-tambah-tes-jasa" class="btn btn-outline btn-sm" style="margin-bottom:16px">+ Tambah Layanan</button>
-    <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:16px">
-      <div style="font-size:12px;color:var(--muted)">Total Simulasi</div>
-      <div style="font-size:24px;font-weight:700;color:var(--navy)" id="tes-total">Rp 0</div>
+    <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;color:var(--muted)">Subtotal</div>
+        <div style="font-size:18px;font-weight:700;color:var(--navy)" id="tes-subtotal">Rp 0</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <label style="font-size:13px;color:var(--muted);white-space:nowrap;margin-bottom:0">Potongan (Rp)</label>
+        <input id="tes-diskon" type="number" min="0" placeholder="0"
+          style="width:130px;padding:6px 10px;font-size:13px">
+        <div style="flex:1;text-align:right">
+          <div style="font-size:12px;color:var(--muted)">Total Simulasi</div>
+          <div style="font-size:22px;font-weight:700;color:var(--teal)" id="tes-total">Rp 0</div>
+        </div>
+      </div>
     </div>
     <button id="btn-proses-tes" class="btn btn-yellow">&#128424;&#65039; Preview &amp; Cetak Nota</button>
   </div>
@@ -590,23 +618,23 @@ function renderBelanjaItems(){
       </div>
       <div class="form-row" style="margin-bottom:8px">
         <div class="field" style="margin-bottom:0">
-          <label>Jumlah (${item.satuan||"satuan"})</label>
+          <label>Jumlah</label>
           <input class="bi-qty" data-bi="${i}" type="number" min="1" placeholder="0" value="${qty}">
         </div>
         <div class="field" style="margin-bottom:0">
-          <label>Harga Beli Total (Rp) <span style="font-size:10px;color:var(--muted)">semua qty</span></label>
+          <label>Harga Beli Total</label>
           <input class="bi-hbeli" data-bi="${i}" type="number" min="0" placeholder="Harga beli keseluruhan" value="${hbTotal||""}">
         </div>
       </div>
       <div class="form-row" style="margin-bottom:8px">
         <div class="field" style="margin-bottom:0">
-          <label>H.Beli/satuan <span style="font-size:10px;color:var(--muted)">(otomatis)</span></label>
+          <label>Harga Beli Satuan</label>
           <div style="padding:9px 12px;background:#f1f5f9;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--muted)">
             ${hbTotal>0 ? rp(hbSatuan) : '<span style="color:var(--muted)">-</span>'}
           </div>
         </div>
         <div class="field" style="margin-bottom:0">
-          <label>H.Jual/satuan <span style="font-size:10px;color:var(--teal);font-weight:600">+55% → bulat Rp1.000</span></label>
+          <label>Harga Jual Satuan</label>
           <div class="bi-hjual-view" data-bi="${i}"
             style="padding:9px 12px;background:#e8f4f2;border:1.5px solid var(--teal);border-radius:8px;font-size:14px;font-weight:600;color:var(--navy)">
             ${hbTotal>0 ? rp(hjual) : '<span style="color:var(--muted);font-weight:400">isi H.Beli dulu</span>'}
@@ -793,19 +821,18 @@ function renderItems(mode){
       hjualRow=`<div style="display:flex;align-items:center;gap:4px;margin-top:4px">
         <span style="font-size:11px;color:var(--muted)">H.Jual:</span>
         <input type="number" class="hjual-input" value="${hjual}" min="0"
-          style="width:90px;padding:3px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600">
-        <span style="font-size:10px;color:var(--teal)">${item.harga_jual_override!=null&&item.harga_jual_override>0?"✏️ manual":"auto"}</span>
-      </div>
-      <div style="font-size:11px;color:var(--green);margin-top:2px">Untung: ${rp(untung)}</div>`;
+          style="width:85px;padding:3px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600">
+        <span style="font-size:10px;color:var(--teal)">${item.harga_jual_override!=null&&item.harga_jual_override>0?"✏️":"●"}</span>
+      </div>`;
     }
 
-    return`<div class="item-row" data-idx="${i}" style="flex-wrap:wrap;align-items:flex-start">
+    return`<div class="item-row" data-idx="${i}" style="flex-wrap:wrap;align-items:center">
       <select class="sel-obat" style="flex:2;min-width:140px"><option value="">-- Pilih Obat --</option>${opts}</select>
-      <div style="display:flex;flex-direction:column">
-        <input type="number" class="qty-input" value="${item.qty}" min="1" style="width:65px">
+      <div style="display:flex;flex-direction:column;align-items:flex-start">
+        <input type="number" class="qty-input" value="${item.qty}" min="1" style="width:48px;padding:6px 8px;font-size:13px;text-align:center">
         ${hjualRow}
       </div>
-      <button class="btn btn-outline btn-sm del-item" style="align-self:flex-start">&#10005;</button>
+      <button class="btn btn-outline btn-sm del-item">&#10005;</button>
     </div>`;
   }).join("");
 
@@ -907,19 +934,20 @@ function showJasaPicker(mode){
 function hitungTotalJual(mode){
   const obatArr=mode==="jual"?jualItems:tesItems;
   const jasaArr=mode==="jual"?jasaItems:tesJasaItems;
-  let total=0,untung=0;
+  let subtotal=0;
   obatArr.forEach(item=>{
     const o=stokList.find(x=>x.id===item.id);if(!o)return;
-    const hjual=hargaJualEfektif(item);
-    total+=hjual*item.qty;untung+=(hjual-o.harga_beli)*item.qty;
+    subtotal+=hargaJualEfektif(item)*item.qty;
   });
   jasaArr.forEach(item=>{
     const l=layananList.find(x=>x.id===item.id);if(!l)return;
-    total+=l.harga;untung+=l.harga;
+    subtotal+=l.harga||0;
   });
-  const te=el(mode+"-total"),ue=el(mode+"-untung");
+  const diskon=parseFloat(el(mode==="jual"?"jual-diskon":"tes-diskon")?.value)||0;
+  const total=Math.max(0,subtotal-diskon);
+  const se=el(mode+"-subtotal"),te=el(mode+"-total");
+  if(se) se.textContent=rp(subtotal);
   if(te) te.textContent=rp(total);
-  if(ue) ue.textContent=rp(untung);
 }
 
 el("btn-tambah-jual").addEventListener("click",()=>{jualItems.push({id:"",qty:1});renderItems("jual");});
@@ -927,14 +955,23 @@ el("btn-tambah-tes").addEventListener("click",()=>{tesItems.push({id:"",qty:1});
 el("btn-tambah-jasa").addEventListener("click",()=>showJasaPicker("jual"));
 el("btn-tambah-tes-jasa").addEventListener("click",()=>showJasaPicker("tes"));
 el("btn-reset-jual").addEventListener("click",()=>{
-  jualItems=[{id:"",qty:1}];jasaItems=[];renderItems("jual");renderJasa("jual");
+  jualItems=[{id:"",qty:1}];jasaItems=[];
+  el("jual-pembeli").value="";
+  el("jual-diskon").value="";
+  renderItems("jual");renderJasa("jual");
+  hitungTotalJual("jual");
 });
+
+el("jual-diskon").addEventListener("input",()=>hitungTotalJual("jual"));
+el("tes-diskon").addEventListener("input",()=>hitungTotalJual("tes"));
 
 // ── PROSES JUAL ──────────────────────────────────────────
 el("btn-proses-jual").addEventListener("click", async ()=>{
   const validObat=jualItems.filter(i=>i.id);
   const validJasa=jasaItems.filter(i=>i.id);
   if(!validObat.length&&!validJasa.length){toast("Pilih minimal 1 obat atau layanan");return;}
+  const pembeli=el("jual-pembeli").value.trim();
+  const diskon=parseFloat(el("jual-diskon").value)||0;
   for(const item of validObat){
     const o=stokList.find(x=>x.id===item.id);
     if(!o||o.stok<item.qty){toast("Stok "+(o?.nama||"")+" tidak cukup");return;}
@@ -967,10 +1004,13 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
     const strip=stokList.find(x=>x.nama.toLowerCase().includes("strip")&&x.nama.toLowerCase().includes(key));
     if(strip) await updateDoc(doc(db,C_OBAT,strip.id),{stok:increment(-1)});
   }
-  const ref=await addDoc(collection(db,C_TRX),{items:detail,total,untung,waktu:Timestamp.now()});
+  const totalBayar=Math.max(0,total-diskon);
+  const ref=await addDoc(collection(db,C_TRX),{items:detail,total:totalBayar,subtotal:total,diskon,untung,pembeli,waktu:Timestamp.now()});
   toast("Transaksi disimpan!");
-  tampilkanNota(detail,total,ref.id,false);
+  tampilkanNota(detail,totalBayar,ref.id,false,pembeli,diskon,total);
   jualItems=[{id:"",qty:1}];jasaItems=[];
+  el("jual-pembeli").value="";el("jual-diskon").value="";
+  hitungTotalJual("jual");
   loadStok();
 });
 
@@ -979,35 +1019,54 @@ el("btn-proses-tes").addEventListener("click",()=>{
   const validObat=tesItems.filter(i=>i.id);
   const validJasa=tesJasaItems.filter(i=>i.id);
   if(!validObat.length&&!validJasa.length){toast("Pilih minimal 1 item");return;}
-  let total=0;
+  const pembeli=el("tes-pembeli").value.trim();
+  const diskon=parseFloat(el("tes-diskon").value)||0;
+  let subtotal=0;
   const detailObat=validObat.map(item=>{
     const o=stokList.find(x=>x.id===item.id);
-    const sub=o.harga_jual*item.qty;total+=sub;
-    return{tipe:"obat",nama:o.nama,satuan:o.satuan,qty:item.qty,harga_jual:o.harga_jual,subtotal:sub};
+    const hjual=hargaJualEfektif(item);
+    const sub=hjual*item.qty;subtotal+=sub;
+    return{tipe:"obat",nama:o.nama,satuan:o.satuan,qty:item.qty,harga_jual:hjual,subtotal:sub};
   });
   const detailJasa=validJasa.map(item=>{
     const l=layananList.find(x=>x.id===item.id);
-    total+=l.harga;
-    return{tipe:"jasa",nama:l.nama,satuan:"layanan",qty:1,harga_jual:l.harga,subtotal:l.harga};
+    subtotal+=l.harga||0;
+    return{tipe:"jasa",nama:l.nama,satuan:"layanan",qty:1,harga_jual:l.harga,subtotal:l.harga||0};
   });
-  tampilkanNota([...detailObat,...detailJasa],total,"TES-"+Date.now(),true);
+  const totalBayar=Math.max(0,subtotal-diskon);
+  tampilkanNota([...detailObat,...detailJasa],totalBayar,"TES-"+Date.now(),true,pembeli,diskon,subtotal);
 });
 
 // ── NOTA ─────────────────────────────────────────────────
-function tampilkanNota(items,total,noTrx,isTes){
+function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0){
   const tgl=new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
   const rows=items.map(i=>`<tr>
     <td style="padding:5px 0;font-size:13px">${esc(i.nama)}</td>
     <td style="padding:5px 0;font-size:13px;text-align:center">${i.qty}</td>
     <td style="padding:5px 0;font-size:13px;text-align:right">${rp(i.subtotal)}</td>
   </tr>`).join("");
+
+  const diskonRow = diskon>0 ? `
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:#666;margin-top:6px">
+      <span>Subtotal</span><span>${rp(subtotal||total)}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--red);margin-top:4px">
+      <span>Potongan</span><span>- ${rp(diskon)}</span>
+    </div>` : "";
+
+  const pembeliRow = pembeli ? `
+    <div style="font-size:12px;color:#666;margin-top:4px">Kepada: <strong>${esc(pembeli)}</strong></div>` : "";
+
   el("nota-content").innerHTML=`
     <div style="text-align:center;padding-bottom:14px;border-bottom:1.5px dashed #bbb">
       <img src="${LOGO}" style="width:100%;max-width:300px;height:auto;display:block;margin:0 auto">
       ${isTes?'<div style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:700;display:inline-block;margin-top:8px">&#9888;&#65039; TES NOTA &mdash; Tidak Tersimpan</div>':""}
     </div>
-    <div style="padding:10px 0 8px;border-bottom:1px dashed #ccc;display:flex;justify-content:space-between;font-size:12px;color:#666">
-      <span>No: ${noTrx.slice(-8).toUpperCase()}</span><span>${tgl}</span>
+    <div style="padding:10px 0 8px;border-bottom:1px dashed #ccc">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#666">
+        <span>No: ${noTrx.slice(-8).toUpperCase()}</span><span>${tgl}</span>
+      </div>
+      ${pembeliRow}
     </div>
     <table style="width:100%;border-collapse:collapse;margin:10px 0">
       <thead><tr>
@@ -1018,8 +1077,9 @@ function tampilkanNota(items,total,noTrx,isTes){
       <tbody style="border-top:1px solid #eee">${rows}</tbody>
     </table>
     <div style="border-top:1.5px dashed #bbb;padding-top:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:14px;font-weight:600;color:#1e3a5f">TOTAL</span>
+      ${diskonRow}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:${diskon>0?8:0}px">
+        <span style="font-size:14px;font-weight:600;color:#1e3a5f">TOTAL BAYAR</span>
         <span style="font-size:20px;font-weight:700;color:#1e3a5f">${rp(total)}</span>
       </div>
     </div>
@@ -1127,7 +1187,8 @@ async function loadRekap(){
 async function cetakUlang(id){
   const snap=await getDoc(doc(db,C_TRX,id));
   if(!snap.exists()){toast("Data tidak ditemukan");return;}
-  const dt=snap.data();tampilkanNota(dt.items,dt.total,id,false);
+  const dt=snap.data();
+  tampilkanNota(dt.items,dt.total,id,false,dt.pembeli||"",dt.diskon||0,dt.subtotal||dt.total);
 }
 
 // ── DASHBOARD ────────────────────────────────────────────
@@ -1173,7 +1234,7 @@ async function seedLayanan(){
   const snap=await getDocs(collection(db,C_LAY));
   if(snap.empty){
     const defaults=[
-      {nama:"CEK TENSI",harga:15000},
+      {nama:"CEK TENSI",harga:0,noStrip:true},
       {nama:"CEK KOLESTEROL",harga:25000},
       {nama:"CEK GULA DARAH",harga:20000},
       {nama:"CEK ASAM URAT",harga:20000},
