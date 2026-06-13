@@ -101,8 +101,43 @@ tr:hover td{background:#f8fafc}
 
 <!-- STOK -->
 <div id="page-stok" class="page">
+  <!-- Form tambah stok manual (collapsible) -->
+  <div class="card" id="card-tambah-stok" style="display:none">
+    <h2>&#10133; Tambah Stok Obat Lama</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Untuk obat yang sudah ada sebelumnya dan belum tercatat di aplikasi ini.</p>
+    <div class="form-row">
+      <div class="field"><label>Nama Obat</label>
+        <input id="ms-nama" type="text" placeholder="Nama obat" list="dl-stok-manual">
+        <datalist id="dl-stok-manual"></datalist>
+      </div>
+      <div class="field"><label>Satuan</label>
+        <select id="ms-satuan">
+          <option value="">-- Pilih --</option>
+          <option value="STRIP">STRIP</option>
+          <option value="BOTOL">BOTOL</option>
+          <option value="AMPUL">AMPUL</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Jumlah Stok</label><input id="ms-qty" type="number" min="1" placeholder="0"></div>
+      <div class="field"><label>Harga Beli/satuan (Rp)</label><input id="ms-hbeli" type="number" min="0" placeholder="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Harga Jual/satuan (Rp)</label><input id="ms-hjual" type="number" min="0" placeholder="0"></div>
+      <div class="field"><label>Expired Date (opsional)</label><input id="ms-exp" type="date"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button id="btn-simpan-stok-manual" class="btn btn-navy">&#128190; Simpan</button>
+      <button id="btn-batal-stok-manual" class="btn btn-outline">Batal</button>
+    </div>
+  </div>
+
   <div class="card">
-    <h2>&#128230; Daftar Stok</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+      <h2 style="margin-bottom:0;padding-bottom:0;border:none">&#128230; Daftar Stok</h2>
+      <button id="btn-show-tambah-stok" class="btn btn-navy btn-sm">&#10133; Tambah Stok Lama</button>
+    </div>
     <div style="overflow-x:auto">
       <table><thead><tr><th>Nama</th><th>Satuan</th><th>Stok</th><th>H.Beli</th><th>H.Jual</th><th>Exp Terdekat</th><th>Status</th><th></th></tr></thead>
       <tbody id="tb-stok"><tr><td colspan="8" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
@@ -267,19 +302,14 @@ const C_TRX   = "transaksi_asriani";
 const C_LAY   = "layanan_asriani";
 const C_BELI  = "belanja_asriani";
 
-// ── AUTO HARGA (markup bertingkat, bulatkan ke kelipatan 500) ──
-function autoHarga(hargaBeli){
-  const h = parseFloat(hargaBeli)||0;
+// ── AUTO HARGA ──────────────────────────────────────────
+// hargaBeliSatuan = harga beli per satuan (sudah dibagi qty)
+// profit 55% (tengah antara 50-60%), bulatkan ke kelipatan 1000
+function autoHarga(hargaBeliSatuan){
+  const h = parseFloat(hargaBeliSatuan)||0;
   if(h<=0) return 0;
-  let jual;
-  if(h < 1000)       jual = h * 2.5;
-  else if(h < 3000)  jual = h * 2.0;
-  else if(h < 5000)  jual = h * 1.8;
-  else if(h < 10000) jual = h * 1.6;
-  else if(h < 20000) jual = h * 1.4;
-  else               jual = h * 1.3;
-  // Bulatkan ke kelipatan 500 terdekat ke atas
-  return Math.ceil(jual / 500) * 500;
+  const jual = h * 1.55; // 55% profit
+  return Math.ceil(jual / 1000) * 1000;
 }
 
 let stokList    = [];
@@ -375,6 +405,65 @@ async function hapusObat(id){
   loadStok();
 }
 
+// Tambah stok manual
+el("btn-show-tambah-stok").addEventListener("click",()=>{
+  const card=el("card-tambah-stok");
+  card.style.display=card.style.display==="none"?"block":"none";
+  // Isi datalist dari stok
+  const dl=el("dl-stok-manual");
+  dl.innerHTML=stokList.map(o=>`<option value="${esc(o.nama)}">`).join("");
+  if(card.style.display==="block") el("ms-nama").focus();
+});
+
+el("btn-batal-stok-manual").addEventListener("click",()=>{
+  el("card-tambah-stok").style.display="none";
+  ["ms-nama","ms-qty","ms-hbeli","ms-hjual","ms-exp"].forEach(id=>el(id).value="");
+  el("ms-satuan").value="";
+});
+
+// Auto-isi saat pilih nama yang sudah ada
+el("ms-nama").addEventListener("input",function(){
+  this.value=this.value.toUpperCase();
+  const match=stokList.find(x=>x.nama===this.value);
+  if(match){
+    el("ms-satuan").value=match.satuan||"";
+    el("ms-hbeli").value=match.harga_beli||"";
+    el("ms-hjual").value=match.harga_jual||"";
+  }
+});
+
+el("btn-simpan-stok-manual").addEventListener("click", async ()=>{
+  const nama=el("ms-nama").value.trim().toUpperCase();
+  const satuan=el("ms-satuan").value;
+  const qty=parseInt(el("ms-qty").value)||0;
+  const hbeli=parseFloat(el("ms-hbeli").value)||0;
+  const hjual=parseFloat(el("ms-hjual").value)||0;
+  const exp=el("ms-exp").value;
+  if(!nama||qty<=0){toast("Nama & jumlah wajib diisi");return;}
+
+  const docId=nama.replace(/\s+/g,"_").toLowerCase();
+  const ref=doc(db,C_OBAT,docId);
+  const snap=await getDoc(ref);
+  const batchId="manual_"+Date.now();
+  const batches={};
+  batches[batchId]={exp,qty,harga_beli:hbeli,sumber:"manual"};
+
+  if(snap.exists()){
+    const existing=snap.data();
+    const existBatches=existing.batches||{};
+    existBatches[batchId]=batches[batchId];
+    await updateDoc(ref,{stok:increment(qty),harga_beli:hbeli||existing.harga_beli,harga_jual:hjual||existing.harga_jual,satuan:satuan||existing.satuan,batches:existBatches,updated:Timestamp.now()});
+    toast("Stok "+nama+" ditambahkan");
+  } else {
+    await setDoc(ref,{nama,satuan,stok:qty,harga_beli:hbeli,harga_jual:hjual,batches,created:Timestamp.now()});
+    toast("Obat "+nama+" ditambahkan");
+  }
+  el("card-tambah-stok").style.display="none";
+  ["ms-nama","ms-qty","ms-hbeli","ms-hjual","ms-exp"].forEach(id=>el(id).value="");
+  el("ms-satuan").value="";
+  loadStok();
+});
+
 // ── LAYANAN ──────────────────────────────────────────────
 async function loadLayanan(){
   const snap=await getDocs(query(collection(db,C_LAY),orderBy("nama")));
@@ -455,32 +544,33 @@ async function hapusLayanan(id){
 
 // ── BELANJA ──────────────────────────────────────────────
 function resetBelanjaForm(){
-  belanjaItems=[{nama:"",satuan:"",qty:1,harga_beli:0,harga_jual:0,exp:""}];
+  belanjaItems=[{nama:"",satuan:"",qty:1,harga_beli_total:0,harga_beli:0,harga_jual:0,exp:""}];
   const today=new Date().toISOString().split("T")[0];
   el("b-tgl").value=today;
   el("b-ket").value="";
   renderBelanjaItems();
 }
 
-function calcHargaJualBelanja(harga_beli, satuan){
-  const auto = autoHarga(harga_beli);
-  if((satuan||"").toLowerCase()==="strip") return Math.ceil(auto/10/500)*500||500;
-  return auto;
+// hargaBeliTotal = total harga beli (semua qty), qty = jumlah item
+function calcHargaJualBelanja(hargaBeliTotal, qty){
+  const perSatuan = (parseFloat(hargaBeliTotal)||0) / (parseInt(qty)||1);
+  return autoHarga(perSatuan);
 }
 
 function renderBelanjaItems(){
   const wrap=el("belanja-items-wrap"); if(!wrap) return;
-
-  // Buat datalist dari stok yang sudah ada
   const namaOpts = stokList.map(o=>`<option value="${esc(o.nama)}">`).join("");
+  const satuanList = ["STRIP","BOTOL","AMPUL"];
 
   wrap.innerHTML = `<datalist id="dl-obat">${namaOpts}</datalist>` +
   belanjaItems.map((item,i)=>{
-    const satuanList = ["TABLET","STRIP","BOTOL","KAPSUL","SACHET","TUBE","AMPUL","VIAL","KRIM","SALEP","SIRUP","TETES","INHALER"];
     const satuanOpts = satuanList.map(s=>`<option value="${s}" ${(item.satuan||"")=== s?"selected":""}>${s}</option>`).join("");
-    const hjual = calcHargaJualBelanja(item.harga_beli, item.satuan);
+    const hbTotal = item.harga_beli_total||0;
+    const qty = item.qty||1;
+    const hjual = hbTotal>0 ? calcHargaJualBelanja(hbTotal, qty) : 0;
+    const hbSatuan = qty>0 ? Math.round(hbTotal/qty) : 0;
 
-    return `<div style="background:var(--bg);border-radius:10px;padding:12px 12px 12px 12px;margin-bottom:10px">
+    return `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:12px;font-weight:600;color:var(--navy)">Item ${i+1}</span>
         <button class="btn btn-red btn-sm del-bitem" data-bi="${i}" style="padding:3px 8px;font-size:11px">&#10005; Hapus</button>
@@ -498,26 +588,32 @@ function renderBelanjaItems(){
           </select>
         </div>
       </div>
-      <div class="form-row3">
+      <div class="form-row" style="margin-bottom:8px">
         <div class="field" style="margin-bottom:0">
-          <label>Jumlah</label>
-          <input class="bi-qty" data-bi="${i}" type="number" min="1" placeholder="0" value="${item.qty||1}">
+          <label>Jumlah (${item.satuan||"satuan"})</label>
+          <input class="bi-qty" data-bi="${i}" type="number" min="1" placeholder="0" value="${qty}">
         </div>
         <div class="field" style="margin-bottom:0">
-          <label>Harga Beli/satuan (Rp)</label>
-          <input class="bi-hbeli" data-bi="${i}" type="number" min="0" placeholder="0" value="${item.harga_beli||""}">
+          <label>Harga Beli Total (Rp) <span style="font-size:10px;color:var(--muted)">semua qty</span></label>
+          <input class="bi-hbeli" data-bi="${i}" type="number" min="0" placeholder="Harga beli keseluruhan" value="${hbTotal||""}">
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="field" style="margin-bottom:0">
+          <label>H.Beli/satuan <span style="font-size:10px;color:var(--muted)">(otomatis)</span></label>
+          <div style="padding:9px 12px;background:#f1f5f9;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--muted)">
+            ${hbTotal>0 ? rp(hbSatuan) : '<span style="color:var(--muted)">-</span>'}
+          </div>
         </div>
         <div class="field" style="margin-bottom:0">
-          <label>Harga Jual/satuan (Rp)
-            ${item.satuan==="STRIP"?'<span style="font-size:10px;color:var(--teal);font-weight:600">per tablet (÷10)</span>':'<span style="font-size:10px;color:var(--teal);font-weight:600">otomatis</span>'}
-          </label>
+          <label>H.Jual/satuan <span style="font-size:10px;color:var(--teal);font-weight:600">+55% → bulat Rp1.000</span></label>
           <div class="bi-hjual-view" data-bi="${i}"
             style="padding:9px 12px;background:#e8f4f2;border:1.5px solid var(--teal);border-radius:8px;font-size:14px;font-weight:600;color:var(--navy)">
-            ${item.harga_beli>0?rp(hjual):'<span style="color:var(--muted);font-weight:400">isi H.Beli dulu</span>'}
+            ${hbTotal>0 ? rp(hjual) : '<span style="color:var(--muted);font-weight:400">isi H.Beli dulu</span>'}
           </div>
         </div>
       </div>
-      <div class="field" style="margin-top:8px;margin-bottom:0;max-width:200px">
+      <div class="field" style="margin-bottom:0;max-width:200px">
         <label>Expired Date</label>
         <input class="bi-exp" data-bi="${i}" type="date" value="${item.exp||""}">
       </div>
@@ -525,11 +621,19 @@ function renderBelanjaItems(){
   }).join("");
 
   function recalcHjual(i){
-    belanjaItems[i].harga_jual = calcHargaJualBelanja(belanjaItems[i].harga_beli, belanjaItems[i].satuan);
-    const view = wrap.querySelector('.bi-hjual-view[data-bi="'+i+'"]');
-    if(view) view.innerHTML = belanjaItems[i].harga_beli>0
+    const hbTotal = belanjaItems[i].harga_beli_total||0;
+    const qty = belanjaItems[i].qty||1;
+    belanjaItems[i].harga_beli = Math.round(hbTotal/qty); // harga beli per satuan
+    belanjaItems[i].harga_jual = calcHargaJualBelanja(hbTotal, qty);
+    // Update tampilan H.Beli satuan
+    wrap.querySelectorAll('.form-row')[i*3+2]?.querySelectorAll('div')[0]
+      ?.querySelector('div[style*="f1f5f9"]')?.innerHTML === undefined;
+    // Re-render simpel
+    const view=wrap.querySelector('.bi-hjual-view[data-bi="'+i+'"]');
+    if(view) view.innerHTML = hbTotal>0
       ? rp(belanjaItems[i].harga_jual)
       : '<span style="color:var(--muted);font-weight:400">isi H.Beli dulu</span>';
+    hitungTotalBelanja();
   }
 
   wrap.querySelectorAll(".bi-nama").forEach(inp=>{
@@ -537,13 +641,11 @@ function renderBelanjaItems(){
       const i=+this.dataset.bi;
       belanjaItems[i].nama=this.value.toUpperCase();
       this.value=this.value.toUpperCase();
-      // Auto-isi satuan dari stok jika ada
       const match=stokList.find(x=>x.nama===belanjaItems[i].nama);
-      if(match && match.satuan){
+      if(match&&match.satuan){
         belanjaItems[i].satuan=match.satuan.toUpperCase();
         const sel=wrap.querySelector('.bi-satuan[data-bi="'+i+'"]');
         if(sel) sel.value=belanjaItems[i].satuan;
-        recalcHjual(i);
       }
     });
   });
@@ -552,23 +654,23 @@ function renderBelanjaItems(){
     sel.addEventListener("change",function(){
       const i=+this.dataset.bi;
       belanjaItems[i].satuan=this.value;
-      recalcHjual(i);
-      // Update label strip
-      const lbl=wrap.querySelectorAll('.field label')[i*5+2]; // approximate
-      renderBelanjaItems(); // re-render untuk update label strip
+      renderBelanjaItems();
     });
   });
 
   wrap.querySelectorAll(".bi-qty").forEach(inp=>{
-    inp.addEventListener("input",function(){belanjaItems[+this.dataset.bi].qty=parseInt(this.value)||1;hitungTotalBelanja();});
+    inp.addEventListener("input",function(){
+      const i=+this.dataset.bi;
+      belanjaItems[i].qty=parseInt(this.value)||1;
+      recalcHjual(i);
+    });
   });
 
   wrap.querySelectorAll(".bi-hbeli").forEach(inp=>{
     inp.addEventListener("input",function(){
       const i=+this.dataset.bi;
-      belanjaItems[i].harga_beli=parseFloat(this.value)||0;
+      belanjaItems[i].harga_beli_total=parseFloat(this.value)||0;
       recalcHjual(i);
-      hitungTotalBelanja();
     });
   });
 
@@ -579,7 +681,7 @@ function renderBelanjaItems(){
   wrap.querySelectorAll(".del-bitem").forEach(btn=>{
     btn.addEventListener("click",function(){
       belanjaItems.splice(+this.dataset.bi,1);
-      if(!belanjaItems.length) belanjaItems.push({nama:"",satuan:"",qty:1,harga_beli:0,harga_jual:0,exp:""});
+      if(!belanjaItems.length) belanjaItems.push({nama:"",satuan:"",qty:1,harga_beli_total:0,harga_beli:0,harga_jual:0,exp:""});
       renderBelanjaItems();
     });
   });
@@ -587,9 +689,16 @@ function renderBelanjaItems(){
   hitungTotalBelanja();
 }
 el("btn-tambah-bitem").addEventListener("click",()=>{
-  belanjaItems.push({nama:"",satuan:"",qty:1,harga_beli:0,harga_jual:0,exp:""});
+  belanjaItems.push({nama:"",satuan:"",qty:1,harga_beli_total:0,harga_beli:0,harga_jual:0,exp:""});
   renderBelanjaItems();
 });
+
+function hitungTotalBelanja(){
+  let total=0;
+  belanjaItems.forEach(i=>total+=(i.harga_beli_total||0));
+  const el2=el("belanja-total");
+  if(el2) el2.textContent=rp(total);
+}
 
 el("btn-simpan-belanja").addEventListener("click", async ()=>{
   const tgl=el("b-tgl").value;
@@ -601,7 +710,7 @@ el("btn-simpan-belanja").addEventListener("click", async ()=>{
   const detail=valid.map(i=>{
     const sub=(i.harga_beli||0)*(i.qty||0);
     total+=sub;
-    const hjual=calcHargaJualBelanja(i.harga_beli,i.satuan);return{nama:i.nama.trim(),satuan:i.satuan||"",qty:i.qty,harga_beli:i.harga_beli||0,harga_jual:hjual,exp:i.exp||"",subtotal:sub};
+    return{nama:i.nama.trim(),satuan:i.satuan||"",qty:i.qty,harga_beli:i.harga_beli||0,harga_jual:i.harga_jual||0,exp:i.exp||"",subtotal:i.harga_beli_total||sub};
   });
 
   // Simpan riwayat belanja
