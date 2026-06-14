@@ -1241,7 +1241,7 @@ function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,ba
       ${kembalianRow}
     </div>
     <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #ccc;font-size:12px;color:#666">
-      <span>Pembayaran: <strong>${bayar||"TUNAI"}</strong></span>
+      <span>${(bayar||"TUNAI")==="PRIBADI"?"Ket: <strong>KONSUMSI PRIBADI/KELUARGA</strong>":"Pembayaran: <strong>"+(bayar||"TUNAI")+"</strong>"}</span>
     </div>
     <div style="text-align:center;margin-top:12px;padding-top:10px;border-top:1px dashed #ccc;font-size:13px;color:#555;font-style:italic;padding-bottom:4px">
       Terima Kasih, Lekas Sehat Kembali &#127807;
@@ -1593,7 +1593,7 @@ function wireBayarBtns(mode){
       } else if(sel==="PRIBADI"){
         detail.style.display="flex";
         detail.innerHTML=`<div style="font-size:12px;color:var(--purple);padding:6px 10px;background:#f3f0ff;border-radius:8px">
-          &#127968; Konsumsi pribadi/keluarga — tidak ada uang masuk, stok tetap terkurang
+          &#127968; Konsumsi Pribadi/Keluarga
         </div>`;
       } else if(sel==="TRANSFER"){
         detail.style.display="flex";
