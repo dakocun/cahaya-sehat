@@ -445,7 +445,10 @@ function showPage(id){
   if(id==="dashboard") loadDashboard();
   if(id==="stok")      loadStok();
   if(id==="layanan")   loadLayanan();
-  if(id==="jual")      Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("jual");renderJasa("jual");});
+  if(id==="jual"){
+    if(!el("jual-tgl").value){ el("jual-tgl").value=new Date().toISOString().split("T")[0]; }
+    Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("jual");renderJasa("jual");});
+  }
   if(id==="belanja")   { loadStok(); loadBelanja(); resetBelanjaForm(); }
   if(id==="rekap")     loadRekap();
   if(id==="tes-nota"){
@@ -919,8 +922,17 @@ function renderItems(mode){
     const arr=mode==="jual"?jualItems:tesItems;
 
     row.querySelector(".sel-obat").addEventListener("change",function(){
-      arr[i].id=this.value;
-      arr[i].harga_jual_override=null;
+      const newId=this.value;
+      // Cek apakah obat ini sudah ada di baris lain
+      const dupIdx=arr.findIndex((it,idx)=>idx!==i && it.id===newId && newId!=="");
+      if(dupIdx!==-1){
+        // Gabungkan qty ke baris yang sudah ada
+        arr[dupIdx].qty+=arr[i].qty||1;
+        arr.splice(i,1);
+      } else {
+        arr[i].id=newId;
+        arr[i].harga_jual_override=null;
+      }
       renderItems(mode);
     });
     row.querySelector(".qty-input").addEventListener("input",function(){
