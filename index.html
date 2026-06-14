@@ -214,9 +214,15 @@ tr:hover td{background:#f8fafc}
 <div id="page-jual" class="page">
   <div class="card">
     <h2>&#128722; Penjualan</h2>
-    <div class="field" style="margin-bottom:12px">
-      <label>Nama Pembeli <span style="font-size:11px;color:var(--muted)">(opsional)</span></label>
-      <input id="jual-pembeli" type="text">
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field" style="margin-bottom:0">
+        <label>Tanggal Transaksi</label>
+        <input id="jual-tgl" type="date">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Nama Pembeli <span style="font-size:11px;color:var(--muted)">(opsional)</span></label>
+        <input id="jual-pembeli" type="text">
+      </div>
     </div>
     <div class="section-label">&#128138; Obat</div>
     <div id="jual-wrap"></div>
@@ -333,9 +339,15 @@ tr:hover td{background:#f8fafc}
 <div id="page-tes-nota" class="page">
   <div class="card" style="border:2px dashed var(--yellow)">
     <h2>&#128424;&#65039; Tes Nota <span style="font-size:11px;font-weight:400;color:var(--yellow)">(Simulasi &mdash; tidak mengubah stok)</span></h2>
-    <div class="field" style="margin-bottom:12px">
-      <label>Nama Pembeli <span style="font-size:11px;color:var(--muted)">(opsional)</span></label>
-      <input id="tes-pembeli" type="text">
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field" style="margin-bottom:0">
+        <label>Tanggal Transaksi</label>
+        <input id="tes-tgl" type="date">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Nama Pembeli <span style="font-size:11px;color:var(--muted)">(opsional)</span></label>
+        <input id="tes-pembeli" type="text">
+      </div>
     </div>
     <div class="section-label">&#128138; Obat</div>
     <div id="tes-wrap"></div>
@@ -447,7 +459,10 @@ function showPage(id){
   if(id==="jual")      Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("jual");renderJasa("jual");});
   if(id==="belanja")   { loadStok(); loadBelanja(); resetBelanjaForm(); }
   if(id==="rekap")     loadRekap();
-  if(id==="tes-nota")  Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("tes");renderJasa("tes");});
+  if(id==="tes-nota"){
+    if(!el("tes-tgl").value){ el("tes-tgl").value=new Date().toISOString().split("T")[0]; }
+    Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("tes");renderJasa("tes");});
+  }
 }
 document.querySelectorAll(".tab").forEach(tab=>{
   tab.addEventListener("click",()=>showPage(tab.dataset.page));
@@ -714,7 +729,7 @@ function renderBelanjaItems(){
           <label>Harga Jual Satuan</label>
           <div class="bi-hjual-view" data-bi="${i}"
             style="padding:9px 12px;background:#e8f4f2;border:1.5px solid var(--teal);border-radius:8px;font-size:14px;font-weight:600;color:var(--navy)">
-            ${hbTotal>0 ? rp(hjual) : '<span style="color:var(--muted);font-weight:400">isi H.Beli dulu</span>'}
+            ${hbTotal>0 ? rp(hjual) : '-'}
           </div>
         </div>
       </div>
@@ -875,8 +890,7 @@ async function loadBelanja(){
 
 // ── PENJUALAN ITEMS ───────────────────────────────────────
 function hargaJualEfektif(item){
-  // Gunakan override jika ada, fallback ke harga_jual di stok
-  if(item.harga_jual_override!=null && item.harga_jual_override>0) return item.harga_jual_override;
+  if(item.harga_jual_override!=null) return item.harga_jual_override;
   const o=stokList.find(x=>x.id===item.id);
   return o?o.harga_jual:0;
 }
@@ -917,8 +931,8 @@ function renderItems(mode){
 
     row.querySelector(".sel-obat").addEventListener("change",function(){
       arr[i].id=this.value;
-      arr[i].harga_jual_override=null; // reset override saat ganti obat
-      renderItems(mode); // re-render supaya harga auto tampil
+      arr[i].harga_jual_override=null;
+      renderItems(mode);
     });
     row.querySelector(".qty-input").addEventListener("input",function(){
       arr[i].qty=parseInt(this.value)||1;
@@ -1028,8 +1042,11 @@ el("btn-reset-jual").addEventListener("click",()=>{
   jualItems=[{id:"",qty:1}];jasaItems=[];
   el("jual-pembeli").value="";
   el("jual-diskon").value="";
+  el("jual-tgl").value=new Date().toISOString().split("T")[0];
   renderItems("jual");renderJasa("jual");
   hitungTotalJual("jual");
+  const tunaiBtn=el("jual-bayar-btns").querySelector('[data-bayar="TUNAI"]');
+  if(tunaiBtn) tunaiBtn.click();
 });
 
 el("jual-diskon").addEventListener("input",()=>hitungTotalJual("jual"));
@@ -1042,6 +1059,10 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   if(!validObat.length&&!validJasa.length){toast("Pilih minimal 1 obat atau layanan");return;}
   const pembeli=el("jual-pembeli").value.trim();
   const diskon=parseFloat(el("jual-diskon").value)||0;
+  const tglInput=el("jual-tgl").value;
+  const today=new Date().toISOString().split("T")[0];
+  const tglManual=tglInput&&tglInput!==today?tglInput:null;
+  const waktuSimpan=tglInput?new Date(tglInput+"T"+new Date().toTimeString().slice(0,8)):new Date();
   for(const item of validObat){
     const o=stokList.find(x=>x.id===item.id);
     if(!o||o.stok<item.qty){toast("Stok "+(o?.nama||"")+" tidak cukup");return;}
@@ -1077,9 +1098,9 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   const totalBayar=Math.max(0,total-diskon);
   const bayar=getBayarInfo("jual");
   const kembalian=getKembalian("jual");
-  const ref=await addDoc(collection(db,C_TRX),{items:detail,total:totalBayar,subtotal:total,diskon,untung,pembeli,bayar,kembalian,waktu:Timestamp.now()});
+  const ref=await addDoc(collection(db,C_TRX),{items:detail,total:totalBayar,subtotal:total,diskon,untung,pembeli,bayar,kembalian,tgl:tglInput||today,waktu:Timestamp.fromDate(waktuSimpan)});
   toast("Transaksi disimpan!");
-  tampilkanNota(detail,totalBayar,ref.id,false,pembeli,diskon,total,bayar,kembalian);
+  tampilkanNota(detail,totalBayar,ref.id,false,pembeli,diskon,total,bayar,kembalian,tglManual);
   jualItems=[{id:"",qty:1}];jasaItems=[];
   el("jual-pembeli").value="";el("jual-diskon").value="";
   // Reset bayar
@@ -1112,12 +1133,22 @@ el("btn-proses-tes").addEventListener("click",()=>{
   const totalBayar=Math.max(0,subtotal-diskon);
   const bayar=getBayarInfo("tes");
   const kembalian=getKembalian("tes");
-  tampilkanNota([...detailObat,...detailJasa],totalBayar,"TES-"+Date.now(),true,pembeli,diskon,subtotal,bayar,kembalian);
+  const tglTesinput=el("tes-tgl").value;
+  const todayTes=new Date().toISOString().split("T")[0];
+  const tglTesManual=tglTesinput&&tglTesinput!==todayTes?tglTesinput:null;
+  tampilkanNota([...detailObat,...detailJasa],totalBayar,"TES-"+Date.now(),true,pembeli,diskon,subtotal,bayar,kembalian,tglTesManual);
 });
 
 // ── NOTA ─────────────────────────────────────────────────
-function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,bayar="TUNAI",kembalian=null){
-  const tgl=new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
+function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,bayar="TUNAI",kembalian=null,tglManual=null){
+  let tgl;
+  if(tglManual){
+    // Tanggal manual - tanpa jam
+    const d=new Date(tglManual+"T00:00:00");
+    tgl=d.toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
+  } else {
+    tgl=new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  }
   const rows=items.map(i=>`<tr>
     <td style="padding:5px 0;font-size:13px">${esc(i.nama)}</td>
     <td style="padding:5px 0;font-size:13px;text-align:center">${i.qty}</td>
@@ -1498,7 +1529,7 @@ function wireBayarBtns(mode){
 }
 
 
-function hitungKembalian(mode){
+window.hitungKembalian = function hitungKembalian(mode){
   const totalEl=el(mode+"-total");
   const total=parseInt((totalEl?.textContent||"0").replace(/\D/g,""))||0;
   const bayarEl=el(mode+"-tunai-bayar");
