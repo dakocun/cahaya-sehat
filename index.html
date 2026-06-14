@@ -62,18 +62,7 @@ tr:hover td{background:#f8fafc}
 .nota-box{background:#fff;border-radius:12px;max-width:380px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 #nota-content{padding:20px 20px 12px}
 .nota-actions{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:#f8fafc;border-radius:0 0 12px 12px;flex-wrap:wrap}
-@media print{
-  @page{size:80mm auto;margin:0}
-  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  html{width:80mm!important}
-  body{width:80mm!important;margin:0!important;padding:0!important;background:#fff!important}
-  body>*{display:none!important}
-  #overlay{display:block!important;position:static!important;background:none!important;padding:0!important;width:80mm!important}
-  .nota-box{width:80mm!important;max-width:80mm!important;box-shadow:none!important;border-radius:0!important;max-height:none!important;overflow:visible!important}
-  .nota-actions{display:none!important}
-  #nota-content{padding:8px!important}
-  #nota-content img{max-width:72mm!important;width:72mm!important}
-}
+/* print handled via popup window */
 </style>
 </head>
 <body>
@@ -1211,8 +1200,44 @@ function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,ba
 }
 
 el("btn-tutup").addEventListener("click",()=>el("overlay").classList.remove("show"));
-el("btn-print").addEventListener("click",()=>window.print());
-el("btn-pdf").addEventListener("click",()=>{toast("Pilih 'Save as PDF' di dialog print");setTimeout(()=>window.print(),800);});
+function printNota(savePDF=false){
+  const notaHTML = document.getElementById("nota-content").innerHTML;
+  const logoSrc  = document.getElementById("logo-data").src;
+
+  // Ganti src relatif logo jika perlu
+  const win = window.open("","_blank","width=340,height=600,scrollbars=yes");
+  if(!win){ toast("Popup diblokir browser. Izinkan popup lalu coba lagi."); return; }
+
+  win.document.write(`<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>Nota</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; width: 80mm; margin: 0; padding: 0; background: #fff; }
+  img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { font-size: 12px; }
+  @media print {
+    @page { size: 80mm auto; margin: 0; }
+    body { width: 80mm; }
+  }
+</style>
+</head><body>
+<div style="padding:12px 14px 14px">${notaHTML.replace(/src="[^"]*logo-data[^"]*"/g,'').replace(/<img /g,'<img src="${logoSrc}" ')}</div>
+<script>
+  window.onload = function(){
+    ${savePDF ? '' : 'window.print();'}
+    ${savePDF ? 'window.print();' : ''}
+  };
+<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+el("btn-print").addEventListener("click",()=>printNota(false));
+el("btn-pdf").addEventListener("click",()=>printNota(true));
 
 // ── REKAP ─────────────────────────────────────────────────
 let rekapPeriod = "bulan";
