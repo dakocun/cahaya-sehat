@@ -1257,13 +1257,14 @@ el("btn-proses-tes").addEventListener("click",()=>{
     subtotal+=hJasa*qJasa;
     return{tipe:"jasa",nama:l.nama,satuan:"layanan",qty:qJasa,harga_jual:hJasa,subtotal:hJasa*qJasa};
   });
-  const totalBayar=Math.max(0,subtotal-diskon);
   const bayar=getBayarInfo("tes");
-  const kembalian=getKembalian("tes");
+  const isTesPrib=bayar==="PRIBADI";
+  const totalBayar=isTesPrib?0:Math.max(0,subtotal-diskon);
+  const kembalian=isTesPrib?null:getKembalian("tes");
   const tglTesinput=el("tes-tgl").value;
   const todayTes=new Date().toISOString().split("T")[0];
   const tglTesManual=tglTesinput&&tglTesinput!==todayTes?tglTesinput:null;
-  tampilkanNota([...detailObat,...detailJasa],totalBayar,"TES-"+Date.now(),true,pembeli,diskon,subtotal,bayar,kembalian,tglTesManual);
+  tampilkanNota([...detailObat,...detailJasa],totalBayar,"TES-"+Date.now(),true,pembeli,isTesPrib?0:diskon,subtotal,bayar,kembalian,tglTesManual);
 });
 
 // ── NOTA ─────────────────────────────────────────────────
@@ -1342,39 +1343,56 @@ function printNota(savePDF=false){
   const notaEl = document.getElementById("nota-content");
   const logoSrc = document.getElementById("logo-data").src;
 
-  // Clone nota dan fix gambar
   const clone = notaEl.cloneNode(true);
   clone.querySelectorAll("img").forEach(img=>{ img.src=logoSrc; });
   const notaHTML = clone.innerHTML;
 
-  const win = window.open("","_blank","width=360,height=700,scrollbars=yes");
+  const win = window.open("","_blank","width=400,height=700");
   if(!win){ toast("Popup diblokir. Izinkan popup di browser lalu coba lagi."); return; }
 
   const html = `<!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8">
-<title>Nota Cahaya Sehat</title>
+<title>Nota</title>
 <style>
-  @page{size:80mm auto;margin:0}
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',Arial,sans-serif;width:80mm;margin:0 auto;padding:0;background:#fff;color:#000}
-  img{max-width:76mm;height:auto;display:block;margin:0 auto}
-  table{width:100%;border-collapse:collapse}
-  th,td{font-size:12px}
-  @media print{
-    @page{size:80mm auto;margin:0}
-    body{width:80mm;margin:0}
+  @page { size: 80mm auto; margin: 0; }
+  html { width: 80mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    width: 80mm;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  img { max-width: 76mm; height: auto; display: block; margin: 0 auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { font-size: 12px; }
+  @media print {
+    @page { size: 80mm auto; margin: 0; }
+    html, body { width: 80mm !important; margin: 0 !important; padding: 0 !important; }
   }
 </style>
 </head>
 <body>
-<div style="padding:10px 12px 14px">${notaHTML}</div>
+<div style="padding:10px 12px 14px">\${notaHTML}</div>
 <script>
-  // Fix images after load
-  document.querySelectorAll("img").forEach(function(img){
-    img.onerror=function(){this.style.display="none"};
-  });
-  setTimeout(function(){ window.print(); },400);
+  window.onload = function(){
+    // pastikan gambar loaded
+    var imgs = document.querySelectorAll("img");
+    var loaded = 0;
+    if(imgs.length === 0){ setTimeout(function(){ window.print(); }, 300); return; }
+    imgs.forEach(function(img){
+      if(img.complete){ loaded++; if(loaded===imgs.length) setTimeout(function(){ window.print(); },300); }
+      else {
+        img.onload = function(){ loaded++; if(loaded===imgs.length) setTimeout(function(){ window.print(); },300); };
+        img.onerror = function(){ loaded++; if(loaded===imgs.length) setTimeout(function(){ window.print(); },300); };
+      }
+    });
+  };
 <\/script>
 </body></html>`;
 
