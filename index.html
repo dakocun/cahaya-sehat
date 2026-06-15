@@ -79,6 +79,7 @@ tr:hover td{background:#f8fafc}
   <div class="brand">&#128138; Cahaya Sehat</div>
   <div class="tabs">
     <div class="tab active" data-page="dashboard">Dashboard</div>
+    <div class="tab" data-page="keuangan">Keuangan</div>
     <div class="tab" data-page="belanja">Belanja</div>
     <div class="tab" data-page="layanan">Layanan</div>
     <div class="tab" data-page="stok">Stok</div>
@@ -277,7 +278,7 @@ tr:hover td{background:#f8fafc}
   <div class="card">
     <h2>&#128203; Riwayat Belanja</h2>
     <div style="overflow-x:auto">
-      <table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Item</th><th>Total</th></tr></thead>
+      <table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Item</th><th>Total</th><th></th></tr></thead>
       <tbody id="tb-belanja"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
     </div>
   </div>
@@ -325,8 +326,93 @@ tr:hover td{background:#f8fafc}
       <div class="stat"><div class="val" id="rek-beli-total">-</div><div class="lbl">Total Belanja</div></div>
     </div>
     <div style="overflow-x:auto">
-      <table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Item</th><th>Total</th></tr></thead>
+      <table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Item</th><th>Total</th><th></th></tr></thead>
       <tbody id="tb-rekap-beli"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- KEUANGAN -->
+<div id="page-keuangan" class="page">
+
+  <!-- Filter periode -->
+  <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+    <button class="btn btn-navy btn-sm keu-period active-period" data-kp="hari">Hari Ini</button>
+    <button class="btn btn-outline btn-sm keu-period" data-kp="7hari">7 Hari</button>
+    <button class="btn btn-outline btn-sm keu-period" data-kp="bulan">Bulan</button>
+    <button class="btn btn-outline btn-sm keu-period" data-kp="semua">Semua</button>
+    <div id="keu-bulan-picker" style="display:none;gap:6px;align-items:center;flex-wrap:wrap">
+      <select id="keu-bulan-sel" style="width:auto;padding:5px 8px;font-size:12px">
+        <option value="0">Januari</option><option value="1">Februari</option>
+        <option value="2">Maret</option><option value="3">April</option>
+        <option value="4">Mei</option><option value="5">Juni</option>
+        <option value="6">Juli</option><option value="7">Agustus</option>
+        <option value="8">September</option><option value="9">Oktober</option>
+        <option value="10">November</option><option value="11">Desember</option>
+      </select>
+      <select id="keu-tahun-sel" style="width:auto;padding:5px 8px;font-size:12px"></select>
+    </div>
+  </div>
+
+  <!-- Aksi Modal & Tarik -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <button id="btn-tambah-modal" class="btn btn-teal btn-sm">&#10133; Tambah Modal</button>
+    <button id="btn-tarik-saldo" class="btn btn-outline btn-sm" style="border-color:var(--red);color:var(--red)">&#8595; Tarik Saldo</button>
+  </div>
+
+  <!-- Tabel Keuangan -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th style="padding:10px 10px">No</th>
+            <th>Tanggal</th>
+            <th>Jenis</th>
+            <th>No. Nota / Ket</th>
+            <th style="text-align:right">Uang Masuk</th>
+            <th style="text-align:right">Uang Keluar</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tb-keuangan"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Memuat...</td></tr></tbody>
+        <tfoot id="tf-keuangan"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="stats" style="margin-top:4px">
+    <div class="stat"><div class="val" id="keu-masuk">-</div><div class="lbl">Total Uang Masuk</div></div>
+    <div class="stat"><div class="val" id="keu-keluar">-</div><div class="lbl">Total Uang Keluar</div></div>
+    <div class="stat" id="keu-saldo-stat"><div class="val" id="keu-saldo">-</div><div class="lbl">Saldo Seharusnya</div></div>
+  </div>
+</div>
+
+<!-- MODAL: Tambah Modal -->
+<div id="modal-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;padding:24px;max-width:340px;width:100%">
+    <h3 style="color:var(--navy);margin-bottom:16px">&#10133; Tambah Modal</h3>
+    <div class="field"><label>Tanggal</label><input id="modal-tgl" type="date"></div>
+    <div class="field"><label>Jumlah (Rp)</label><input id="modal-jml" type="number" min="0"></div>
+    <div class="field"><label>Keterangan</label><input id="modal-ket" type="text"></div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button id="btn-simpan-modal" class="btn btn-teal" style="flex:1">Simpan</button>
+      <button id="btn-batal-modal" class="btn btn-outline">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Tarik Saldo -->
+<div id="modal-tarik" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;padding:24px;max-width:340px;width:100%">
+    <h3 style="color:var(--red);margin-bottom:16px">&#8595; Tarik Saldo</h3>
+    <div class="field"><label>Tanggal</label><input id="tarik-tgl" type="date"></div>
+    <div class="field"><label>Jumlah (Rp)</label><input id="tarik-jml" type="number" min="0"></div>
+    <div class="field"><label>Keterangan</label><input id="tarik-ket" type="text"></div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button id="btn-simpan-tarik" class="btn btn-red" style="flex:1">Simpan</button>
+      <button id="btn-batal-tarik" class="btn btn-outline">Batal</button>
     </div>
   </div>
 </div>
@@ -459,6 +545,7 @@ function showPage(id){
   }
   if(id==="belanja")   { loadStok(); loadBelanja(); resetBelanjaForm(); }
   if(id==="rekap")     loadRekap();
+  if(id==="keuangan")  loadKeuangan();
   if(id==="tes-nota"){
     if(!el("tes-tgl").value){ el("tes-tgl").value=new Date().toISOString().split("T")[0]; }
     Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("tes");renderJasa("tes");});
@@ -1040,9 +1127,11 @@ function hitungTotalJual(mode){
     subtotal+=hSat*(item.qty||1);
   });
   const diskon=parseFloat(el(mode==="jual"?"jual-diskon":"tes-diskon")?.value)||0;
-  const total=Math.max(0,subtotal-diskon);
+  const bayarMode=el(mode+"-bayar-btns")?.dataset.selected||"TUNAI";
+  const isPrib=bayarMode==="PRIBADI";
+  const total=isPrib?0:Math.max(0,subtotal-diskon);
   const se=el(mode+"-subtotal"),te=el(mode+"-total");
-  if(se) se.textContent=rp(subtotal);
+  if(se) se.textContent=isPrib?"Rp 0":rp(subtotal);
   if(te) te.textContent=rp(total);
 }
 
@@ -1394,7 +1483,10 @@ async function loadRekapData(){
       <td style="font-size:12px">${detail}</td>
       <td>${rp(dt.total)}</td>
       <td style="color:var(--green)">${rp(dt.untung)}</td>
-      <td><button class="btn btn-outline btn-sm" data-cetak="${d.id}">&#128424;</button></td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-outline btn-sm" data-cetak="${d.id}" title="Cetak">&#128424;</button>
+        <button class="btn btn-red btn-sm" data-hapus-trx="${d.id}" title="Hapus">&#128465;</button>
+      </td>
     </tr>`;
   });
   el("rek-trx").textContent = snapJual.docs.length;
@@ -1406,6 +1498,9 @@ async function loadRekapData(){
     : '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada transaksi</td></tr>';
   tbJual.querySelectorAll("[data-cetak]").forEach(btn=>{
     btn.addEventListener("click",()=>cetakUlang(btn.dataset.cetak));
+  });
+  tbJual.querySelectorAll("[data-hapus-trx]").forEach(btn=>{
+    btn.addEventListener("click",()=>hapusTrx(btn.dataset.hapusTrx));
   });
 
   // Rekap belanja
@@ -1424,6 +1519,7 @@ async function loadRekapData(){
       <td style="font-size:12px">${esc(dt.keterangan||"-")}</td>
       <td style="font-size:12px">${itemStr}</td>
       <td>${rp(dt.total)}</td>
+      <td><button class="btn btn-red btn-sm" data-hapus-beli="${d.id}">&#128465;</button></td>
     </tr>`;
   });
   el("rek-beli-trx").textContent = docsFiltered.length;
@@ -1431,7 +1527,10 @@ async function loadRekapData(){
   const tbBeli = el("tb-rekap-beli");
   tbBeli.innerHTML = rowsBeli.length
     ? rowsBeli.join("")
-    : '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Belum ada pembelian</td></tr>';
+    : '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada pembelian</td></tr>';
+  tbBeli.querySelectorAll("[data-hapus-beli]").forEach(btn=>{
+    btn.addEventListener("click",()=>hapusBelanja(btn.dataset.hapusBeli));
+  });
 }
 
 async function cetakUlang(id){
@@ -1439,6 +1538,38 @@ async function cetakUlang(id){
   if(!snap.exists()){toast("Data tidak ditemukan");return;}
   const dt=snap.data();
   tampilkanNota(dt.items,dt.total,id,false,dt.pembeli||"",dt.diskon||0,dt.subtotal||dt.total,dt.bayar||"TUNAI",dt.kembalian??null);
+}
+
+async function hapusTrx(id){
+  if(!confirm("Hapus transaksi ini? Stok akan dikembalikan.")) return;
+  const snap=await getDoc(doc(db,C_TRX,id));
+  if(!snap.exists()){toast("Data tidak ditemukan");return;}
+  const dt=snap.data();
+
+  // Kembalikan stok untuk item obat
+  for(const item of (dt.items||[])){
+    if(item.tipe==="jasa") continue;
+    // Cari obat berdasarkan nama
+    const obat=stokList.find(o=>o.nama===item.nama);
+    if(obat){
+      await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(item.qty||1)});
+    }
+  }
+
+  // Kembalikan stok strip untuk jasa (jika bukan PRIBADI)
+  if((dt.bayar||"TUNAI")!=="PRIBADI"){
+    for(const item of (dt.items||[])){
+      if(item.tipe!=="jasa") continue;
+      const key=item.nama.toLowerCase().replace("cek ","").trim();
+      const strip=stokList.find(x=>x.nama.toLowerCase().includes("strip")&&x.nama.toLowerCase().includes(key));
+      if(strip) await updateDoc(doc(db,C_OBAT,strip.id),{stok:increment(item.qty||1)});
+    }
+  }
+
+  await deleteDoc(doc(db,C_TRX,id));
+  toast("Transaksi dihapus & stok dikembalikan");
+  await loadStok();
+  loadRekapData();
 }
 
 // ── DASHBOARD ────────────────────────────────────────────
@@ -1585,6 +1716,8 @@ function wireBayarBtns(mode){
       const sel=btn.dataset.bayar;
       wrap.dataset.selected=sel;
       detail.dataset.selected="";
+      // Update total display
+      hitungTotalJual(mode);
 
       if(sel==="TUNAI"){
         detail.style.display="flex";
@@ -1652,6 +1785,244 @@ function getBayarInfo(mode){
   const metode=wrap?.dataset.selected||"TUNAI";
   const sub=detail?.dataset.selected||"";
   return sub ? metode+" - "+sub : metode;
+}
+
+// ── KEUANGAN ─────────────────────────────────────────────
+const C_KEU = "keuangan_asriani";
+let keuPeriod = "hari";
+let keuBulan = new Date().getMonth();
+let keuTahun = new Date().getFullYear();
+let keuWired = false;
+
+function getKeuRange(){
+  if(keuPeriod==="hari"){
+    const s=new Date();s.setHours(0,0,0,0);
+    const e=new Date();e.setHours(23,59,59,999);
+    return{s,e};
+  } else if(keuPeriod==="7hari"){
+    const s=new Date();s.setDate(s.getDate()-6);s.setHours(0,0,0,0);
+    const e=new Date();e.setHours(23,59,59,999);
+    return{s,e};
+  } else if(keuPeriod==="bulan"){
+    return{
+      s:new Date(keuTahun,keuBulan,1),
+      e:new Date(keuTahun,keuBulan+1,0,23,59,59,999)
+    };
+  }
+  return null;
+}
+
+async function loadKeuangan(){
+  if(!keuWired){
+    keuWired=true;
+    const tSel=el("keu-tahun-sel");
+    for(let y=new Date().getFullYear();y>=2024;y--){
+      const opt=document.createElement("option");
+      opt.value=y;opt.text=y;tSel.appendChild(opt);
+    }
+    el("keu-bulan-sel").value=keuBulan;
+    el("keu-tahun-sel").value=keuTahun;
+
+    document.querySelectorAll(".keu-period").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        keuPeriod=btn.dataset.kp;
+        document.querySelectorAll(".keu-period").forEach(b=>b.className="btn btn-outline btn-sm keu-period");
+        btn.className="btn btn-navy btn-sm keu-period active-period";
+        el("keu-bulan-picker").style.display=keuPeriod==="bulan"?"flex":"none";
+        loadKeuData();
+      });
+    });
+    el("keu-bulan-sel").addEventListener("change",()=>{keuBulan=parseInt(el("keu-bulan-sel").value);loadKeuData();});
+    el("keu-tahun-sel").addEventListener("change",()=>{keuTahun=parseInt(el("keu-tahun-sel").value);loadKeuData();});
+
+    // Modal tambah modal
+    el("btn-tambah-modal").addEventListener("click",()=>{
+      el("modal-tgl").value=new Date().toISOString().split("T")[0];
+      el("modal-jml").value="";el("modal-ket").value="";
+      el("modal-modal").style.display="flex";
+    });
+    el("btn-batal-modal").addEventListener("click",()=>el("modal-modal").style.display="none");
+    el("btn-simpan-modal").addEventListener("click", async()=>{
+      const tgl=el("modal-tgl").value;
+      const jml=parseFloat(el("modal-jml").value)||0;
+      const ket=el("modal-ket").value.trim()||"Tambah Modal";
+      if(jml<=0){toast("Jumlah harus diisi");return;}
+      await addDoc(collection(db,C_KEU),{
+        tipe:"modal",jenis:"Masuk",tanggal:tgl,jumlah:jml,
+        keterangan:ket.toUpperCase(),waktu:Timestamp.now()
+      });
+      toast("Modal ditambahkan");
+      el("modal-modal").style.display="none";
+      loadKeuData();
+    });
+
+    // Modal tarik saldo
+    el("btn-tarik-saldo").addEventListener("click",()=>{
+      el("tarik-tgl").value=new Date().toISOString().split("T")[0];
+      el("tarik-jml").value="";el("tarik-ket").value="";
+      el("modal-tarik").style.display="flex";
+    });
+    el("btn-batal-tarik").addEventListener("click",()=>el("modal-tarik").style.display="none");
+    el("btn-simpan-tarik").addEventListener("click", async()=>{
+      const tgl=el("tarik-tgl").value;
+      const jml=parseFloat(el("tarik-jml").value)||0;
+      const ket=el("tarik-ket").value.trim()||"Tarik Saldo";
+      if(jml<=0){toast("Jumlah harus diisi");return;}
+      await addDoc(collection(db,C_KEU),{
+        tipe:"tarik",jenis:"Keluar",tanggal:tgl,jumlah:jml,
+        keterangan:ket.toUpperCase(),waktu:Timestamp.now()
+      });
+      toast("Penarikan saldo dicatat");
+      el("modal-tarik").style.display="none";
+      loadKeuData();
+    });
+  }
+  loadKeuData();
+}
+
+async function loadKeuData(){
+  const range=getKeuRange();
+  const tb=el("tb-keuangan");
+  tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Memuat...</td></tr>';
+
+  // Ambil transaksi penjualan
+  let qTrx;
+  if(range){
+    qTrx=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(range.s)),where("waktu","<=",Timestamp.fromDate(range.e)),orderBy("waktu","asc"));
+  } else {
+    qTrx=query(collection(db,C_TRX),orderBy("waktu","asc"));
+  }
+
+  // Ambil belanja
+  let qBeli;
+  if(range){
+    qBeli=query(collection(db,C_BELI),where("created",">=",Timestamp.fromDate(range.s)),where("created","<=",Timestamp.fromDate(range.e)),orderBy("created","asc"));
+  } else {
+    qBeli=query(collection(db,C_BELI),orderBy("created","asc"));
+  }
+
+  // Ambil modal & tarik
+  let qKeu;
+  if(range){
+    qKeu=query(collection(db,C_KEU),where("waktu",">=",Timestamp.fromDate(range.s)),where("waktu","<=",Timestamp.fromDate(range.e)),orderBy("waktu","asc"));
+  } else {
+    qKeu=query(collection(db,C_KEU),orderBy("waktu","asc"));
+  }
+
+  const [snapTrx,snapBeli,snapKeu] = await Promise.all([getDocs(qTrx),getDocs(qBeli),getDocs(qKeu)]);
+
+  // Gabung semua jadi 1 array & sort by tanggal
+  const rows=[];
+
+  snapTrx.docs.forEach(d=>{
+    const dt=d.data();
+    const tglStr=dt.tgl||dt.waktu?.toDate().toISOString().split("T")[0]||"-";
+    const isPrib=(dt.bayar||"")==="PRIBADI";
+    rows.push({
+      id:d.id, src:"trx", tgl:tglStr,
+      waktuSort:dt.waktu?.toDate()||new Date(tglStr),
+      jenis:"Penjualan", nota:d.id.slice(-8).toUpperCase(),
+      masuk:isPrib?0:(dt.total||0), keluar:0,
+      ket:dt.pembeli||(isPrib?"KONSUMSI PRIBADI":""),
+      raw:dt
+    });
+  });
+
+  snapBeli.docs.forEach(d=>{
+    const dt=d.data();
+    rows.push({
+      id:d.id, src:"beli", tgl:dt.tanggal||"-",
+      waktuSort:dt.created?.toDate()||new Date(dt.tanggal||""),
+      jenis:"Belanja", nota:"-",
+      masuk:0, keluar:dt.total||0,
+      ket:dt.keterangan||"", raw:dt
+    });
+  });
+
+  snapKeu.docs.forEach(d=>{
+    const dt=d.data();
+    rows.push({
+      id:d.id, src:"keu", tgl:dt.tanggal||"-",
+      waktuSort:dt.waktu?.toDate()||new Date(dt.tanggal||""),
+      jenis:dt.tipe==="modal"?"Tambah Modal":"Tarik Saldo",
+      nota:"-",
+      masuk:dt.tipe==="modal"?dt.jumlah:0,
+      keluar:dt.tipe==="tarik"?dt.jumlah:0,
+      ket:dt.keterangan||"", raw:dt
+    });
+  });
+
+  // Sort by waktu
+  rows.sort((a,b)=>a.waktuSort-b.waktuSort);
+
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Belum ada data</td></tr>';
+    el("keu-masuk").textContent=rp(0);
+    el("keu-keluar").textContent=rp(0);
+    el("keu-saldo").textContent=rp(0);
+    return;
+  }
+
+  let totalMasuk=0,totalKeluar=0;
+  tb.innerHTML=rows.map((row,i)=>{
+    totalMasuk+=row.masuk;totalKeluar+=row.keluar;
+    const masukCell=row.masuk>0?`<span style="color:var(--teal);font-weight:600">${rp(row.masuk)}</span>`:`<span style="color:var(--muted)">-</span>`;
+    const keluarCell=row.keluar>0?`<span style="color:var(--red);font-weight:600">${rp(row.keluar)}</span>`:`<span style="color:var(--muted)">-</span>`;
+    const jenisColor=row.jenis==="Penjualan"?"color:var(--teal)":row.jenis==="Belanja"?"color:var(--red)":row.jenis==="Tambah Modal"?"color:var(--green)":"color:var(--yellow)";
+    // Hanya modal & tarik yg bisa dihapus dari sini
+    const hapusBtn=row.src==="keu"
+      ?`<button class="btn btn-red btn-sm" data-hapus-keu="${row.id}" title="Hapus">&#128465;</button>`
+      :`<span style="font-size:10px;color:var(--muted)">otomatis</span>`;
+    return`<tr>
+      <td style="font-size:12px;color:var(--muted)">${i+1}</td>
+      <td style="font-size:12px">${row.tgl}</td>
+      <td style="font-size:12px;font-weight:600;${jenisColor}">${row.jenis}</td>
+      <td style="font-size:11px;color:var(--muted)">${row.nota}${row.ket?` <span style="color:var(--text)">${esc(row.ket)}</span>`:""}</td>
+      <td style="text-align:right">${masukCell}</td>
+      <td style="text-align:right">${keluarCell}</td>
+      <td>${hapusBtn}</td>
+    </tr>`;
+  }).join("");
+
+  const saldo=totalMasuk-totalKeluar;
+  el("keu-masuk").textContent=rp(totalMasuk);
+  el("keu-keluar").textContent=rp(totalKeluar);
+  el("keu-saldo").textContent=rp(saldo);
+  el("keu-saldo-stat").style.background=saldo>=0?"#dcfce7":"#fee2e2";
+  el("keu-saldo-stat").querySelector(".val").style.color=saldo>=0?"var(--green)":"var(--red)";
+
+  // Wire hapus - hanya modal & tarik
+  tb.querySelectorAll("[data-hapus-keu]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      hapusKeuangan("keu", btn.dataset.hapusKeu);
+    });
+  });
+}
+
+async function hapusKeuangan(src,id){
+  // Hanya untuk modal & tarik saldo
+  if(src!=="keu") return;
+  if(!confirm("Hapus catatan ini?")) return;
+  await deleteDoc(doc(db,C_KEU,id));
+  toast("Catatan dihapus");
+  loadKeuData();
+}
+
+async function hapusBelanja(id){
+  if(!confirm("Hapus belanja ini? Stok akan dikurangi kembali.")) return;
+  const snap=await getDoc(doc(db,C_BELI,id));
+  if(snap.exists()){
+    const dt=snap.data();
+    for(const item of (dt.items||[])){
+      const obat=stokList.find(o=>o.nama===item.nama);
+      if(obat) await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(-(item.qty||1))});
+    }
+  }
+  await deleteDoc(doc(db,C_BELI,id));
+  toast("Belanja dihapus & stok dikurangi");
+  await loadStok();
+  loadBelanja();
+  loadRekapData();
 }
 
 // ── INIT ─────────────────────────────────────────────────
