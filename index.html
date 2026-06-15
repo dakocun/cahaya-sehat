@@ -70,6 +70,8 @@ tr:hover td{background:#f8fafc}
 .nota-actions{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:#f8fafc;border-radius:0 0 12px 12px;flex-wrap:wrap}
 /* print handled via popup window */
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -1346,18 +1348,63 @@ function printNota(savePDF=false){
   const logoSrc = document.getElementById("logo-data").src;
   const pembeli = (notaEl.dataset.pembeli||"").trim();
   const tgl = notaEl.dataset.tgl || new Date().toISOString().split("T")[0];
-
-  // Nama file PDF
   const namaFile = pembeli
     ? "CahayaSehat-" + pembeli.split(" ").join("-")
     : "CahayaSehat-" + tgl;
 
+  if(savePDF){
+    // ── PDF via html2canvas + jsPDF ──
+    toast("Membuat PDF...");
+
+    // Buat container sementara di luar layar
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = "position:fixed;left:-9999px;top:0;width:302px;background:#fff;padding:12px 14px;font-family:'Segoe UI',Arial,sans-serif;color:#000";
+    wrapper.innerHTML = notaEl.innerHTML;
+    // Fix gambar
+    wrapper.querySelectorAll("img").forEach(img=>{ img.src=logoSrc; });
+    document.body.appendChild(wrapper);
+
+    // Tunggu gambar load
+    const imgs = wrapper.querySelectorAll("img");
+    const waitImgs = Array.from(imgs).map(img=>
+      img.complete ? Promise.resolve() :
+      new Promise(res=>{ img.onload=res; img.onerror=res; })
+    );
+
+    Promise.all(waitImgs).then(()=>{
+      html2canvas(wrapper, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        width: 302,
+        windowWidth: 302
+      }).then(canvas=>{
+        document.body.removeChild(wrapper);
+        const { jsPDF } = window.jspdf;
+        // 80mm lebar, tinggi proporsional
+        const pxPerMm = canvas.width / 80;
+        const heightMm = canvas.height / pxPerMm;
+        const pdf = new jsPDF({ unit:"mm", format:[80, heightMm], orientation:"portrait" });
+        const imgData = canvas.toDataURL("image/jpeg", 0.95);
+        pdf.addImage(imgData, "JPEG", 0, 0, 80, heightMm);
+        pdf.save(namaFile + ".pdf");
+        toast("PDF disimpan!");
+      }).catch(err=>{
+        document.body.removeChild(wrapper);
+        toast("Gagal buat PDF: " + err.message);
+      });
+    });
+    return;
+  }
+
+  // ── Print biasa via popup ──
   const clone = notaEl.cloneNode(true);
   clone.querySelectorAll("img").forEach(img=>{ img.src=logoSrc; });
   const notaHTML = clone.innerHTML;
 
   const win = window.open("","_blank","width=400,height=700");
-  if(!win){ toast("Popup diblokir. Izinkan popup di browser lalu coba lagi."); return; }
+  if(!win){ toast("Popup diblokir. Izinkan popup lalu coba lagi."); return; }
 
   const html = "<!DOCTYPE html>" +
     "<html><head>" +
@@ -1382,7 +1429,7 @@ function printNota(savePDF=false){
     "imgs.forEach(function(img){" +
     "function done(){loaded++;if(loaded===imgs.length)setTimeout(function(){window.print();},300);}" +
     "if(img.complete)done();else{img.onload=done;img.onerror=done;}" +
-    "});};" +
+    "});};"+
     "<\/script></body></html>";
 
   win.document.open();
@@ -1390,8 +1437,12 @@ function printNota(savePDF=false){
   win.document.close();
 }
 
+
 el("btn-print").addEventListener("click",()=>printNota(false));
-el("btn-pdf").addEventListener("click",()=>printNota(true));
+el("btn-pdf").addEventListener("click",()=>{
+  toast("Di dialog print: More settings → Paper size → pilih None/Custom lalu Save");
+  setTimeout(()=>printNota(true), 800);
+});
 
 // ── REKAP ─────────────────────────────────────────────────
 let rekapPeriod = "bulan";
