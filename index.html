@@ -1302,6 +1302,8 @@ function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,ba
   const pembeliRow = pembeli
     ? `<div style="font-size:12px;color:#555;margin-top:3px">Kepada: <strong>${pembeli.toUpperCase()}</strong></div>` : "";
 
+  el("nota-content").dataset.pembeli = pembeli||"";
+  el("nota-content").dataset.tgl = tglManual||new Date().toISOString().split("T")[0];
   el("nota-content").innerHTML=`
     <div style="text-align:center;padding-bottom:14px;border-bottom:1.5px dashed #bbb">
       <img src="${LOGO}" style="width:100%;max-width:300px;height:auto;display:block;margin:0 auto">
@@ -1342,6 +1344,13 @@ el("btn-tutup").addEventListener("click",()=>el("overlay").classList.remove("sho
 function printNota(savePDF=false){
   const notaEl = document.getElementById("nota-content");
   const logoSrc = document.getElementById("logo-data").src;
+  const pembeli = (notaEl.dataset.pembeli||"").trim();
+  const tgl = notaEl.dataset.tgl || new Date().toISOString().split("T")[0];
+
+  // Nama file PDF
+  const namaFile = pembeli
+    ? "CahayaSehat-" + pembeli.split(" ").join("-")
+    : "CahayaSehat-" + tgl;
 
   const clone = notaEl.cloneNode(true);
   clone.querySelectorAll("img").forEach(img=>{ img.src=logoSrc; });
@@ -1350,51 +1359,31 @@ function printNota(savePDF=false){
   const win = window.open("","_blank","width=400,height=700");
   if(!win){ toast("Popup diblokir. Izinkan popup di browser lalu coba lagi."); return; }
 
-  const html = `<!DOCTYPE html>
-<html><head>
-<meta charset="UTF-8">
-<title>Nota</title>
-<style>
-  @page { size: 80mm auto; margin: 0; }
-  html { width: 80mm; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    width: 80mm;
-    margin: 0;
-    padding: 0;
-    background: #fff;
-    color: #000;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  img { max-width: 76mm; height: auto; display: block; margin: 0 auto; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { font-size: 12px; }
-  @media print {
-    @page { size: 80mm auto; margin: 0; }
-    html, body { width: 80mm !important; margin: 0 !important; padding: 0 !important; }
-  }
-</style>
-</head>
-<body>
-<div style="padding:10px 12px 14px">\${notaHTML}</div>
-<script>
-  window.onload = function(){
-    // pastikan gambar loaded
-    var imgs = document.querySelectorAll("img");
-    var loaded = 0;
-    if(imgs.length === 0){ setTimeout(function(){ window.print(); }, 300); return; }
-    imgs.forEach(function(img){
-      if(img.complete){ loaded++; if(loaded===imgs.length) setTimeout(function(){ window.print(); },300); }
-      else {
-        img.onload = function(){ loaded++; if(loaded===imgs.length) setTimeout(function(){ window.print(); },300); };
-        img.onerror = function(){ loaded++; if(loaded===imgs.length) setTimeout(function(){ window.print(); },300); };
-      }
-    });
-  };
-<\/script>
-</body></html>`;
+  const html = "<!DOCTYPE html>" +
+    "<html><head>" +
+    "<meta charset='UTF-8'>" +
+    "<title>" + namaFile + "</title>" +
+    "<style>" +
+    "@page{size:80mm auto;margin:0}" +
+    "html{width:80mm}" +
+    "*{box-sizing:border-box;margin:0;padding:0}" +
+    "body{font-family:'Segoe UI',Arial,sans-serif;width:80mm;margin:0;padding:0;background:#fff;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+    "img{max-width:76mm;height:auto;display:block;margin:0 auto}" +
+    "table{width:100%;border-collapse:collapse}" +
+    "th,td{font-size:12px}" +
+    "@media print{@page{size:80mm auto;margin:0}html,body{width:80mm!important;margin:0!important;padding:0!important}}" +
+    "</style></head><body>" +
+    "<div style='padding:10px 12px 14px'>" + notaHTML + "</div>" +
+    "<script>" +
+    "window.onload=function(){" +
+    "document.title='" + namaFile + "';" +
+    "var imgs=document.querySelectorAll('img');var loaded=0;" +
+    "if(!imgs.length){setTimeout(function(){window.print();},300);return;}" +
+    "imgs.forEach(function(img){" +
+    "function done(){loaded++;if(loaded===imgs.length)setTimeout(function(){window.print();},300);}" +
+    "if(img.complete)done();else{img.onload=done;img.onerror=done;}" +
+    "});};" +
+    "<\/script></body></html>";
 
   win.document.open();
   win.document.write(html);
