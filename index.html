@@ -275,13 +275,6 @@ tr:hover td{background:#f8fafc}
     </div>
     <button id="btn-simpan-belanja" class="btn btn-purple">&#128190; Simpan &amp; Update Stok</button>
   </div>
-  <div class="card">
-    <h2>&#128203; Riwayat Belanja</h2>
-    <div style="overflow-x:auto">
-      <table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Item</th><th>Total</th><th></th></tr></thead>
-      <tbody id="tb-belanja"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
-    </div>
-  </div>
 </div>
 
 <!-- REKAP -->
@@ -543,7 +536,7 @@ function showPage(id){
     if(!el("jual-tgl").value){ el("jual-tgl").value=new Date().toISOString().split("T")[0]; }
     Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("jual");renderJasa("jual");});
   }
-  if(id==="belanja")   { loadStok(); loadBelanja(); resetBelanjaForm(); }
+  if(id==="belanja")   { loadStok(); resetBelanjaForm(); }
   if(id==="rekap")     loadRekap();
   if(id==="keuangan")  loadKeuangan();
   if(id==="tes-nota"){
