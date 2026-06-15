@@ -1398,58 +1398,43 @@ function printNota(savePDF=false){
     return;
   }
 
-  // ── Print via html2canvas → gambar → popup print ──
-  toast("Menyiapkan print...");
+  // ── Print: buat PDF lalu buka di tab baru untuk print ──
+  toast("Menyiapkan...");
 
   const wrapperP = document.createElement("div");
-  wrapperP.style.cssText = "position:fixed;left:-9999px;top:0;width:302px;background:#fff;padding:12px 14px;font-family:'Segoe UI',Arial,sans-serif;color:#000";
+  wrapperP.style.cssText = "position:fixed;left:-9999px;top:0;width:302px;background:#fff;padding:12px 14px;font-family:'Segoe UI',Arial,sans-serif;color:#000;font-size:13px";
   wrapperP.innerHTML = notaEl.innerHTML;
   wrapperP.querySelectorAll("img").forEach(img=>{ img.src=logoSrc; });
   document.body.appendChild(wrapperP);
 
-  const imgsP = wrapperP.querySelectorAll("img");
-  const waitImgsP = Array.from(imgsP).map(img=>
+  const imgsP = Array.from(wrapperP.querySelectorAll("img"));
+  const waitImgsP = imgsP.map(img=>
     img.complete ? Promise.resolve() :
     new Promise(res=>{ img.onload=res; img.onerror=res; })
   );
 
   Promise.all(waitImgsP).then(()=>{
-    html2canvas(wrapperP, {
-      scale: 3,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: "#ffffff",
-      width: 302,
-      windowWidth: 302
-    }).then(canvas=>{
-      document.body.removeChild(wrapperP);
-      const imgData = canvas.toDataURL("image/png");
-      const { jsPDF } = window.jspdf;
-      const pxPerMm = canvas.width / 80;
-      const heightMm = canvas.height / pxPerMm;
-
-      const win = window.open("","_blank","width=400,height=700");
-      if(!win){ toast("Popup diblokir. Izinkan popup lalu coba lagi."); return; }
-
-      const html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>" + namaFile + "</title>" +
-        "<style>" +
-        "@page{size:80mm " + heightMm.toFixed(1) + "mm;margin:0}" +
-        "*{margin:0;padding:0;box-sizing:border-box}" +
-        "body{width:80mm;margin:0;padding:0;background:#fff}" +
-        "img{width:80mm;height:auto;display:block}" +
-        "@media print{@page{size:80mm " + heightMm.toFixed(1) + "mm;margin:0}body{width:80mm}}" +
-        "</style></head><body>" +
-        "<img src='" + imgData + "'>" +
-        "<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script>" +
-        "</body></html>";
-
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
-    }).catch(err=>{
-      document.body.removeChild(wrapperP);
-      toast("Gagal: " + err.message);
+    return html2canvas(wrapperP,{
+      scale:2, useCORS:true, allowTaint:true,
+      backgroundColor:"#ffffff", width:302, windowWidth:302
     });
+  }).then(canvas=>{
+    document.body.removeChild(wrapperP);
+    const { jsPDF } = window.jspdf;
+    const pxPerMm = canvas.width / 80;
+    const heightMm = canvas.height / pxPerMm;
+    const pdf = new jsPDF({unit:"mm", format:[80,heightMm], orientation:"portrait"});
+    pdf.addImage(canvas.toDataURL("image/jpeg",0.92),"JPEG",0,0,80,heightMm);
+
+    // Buka PDF blob di tab baru → user print dari sana (ukuran sudah benar)
+    const blob = pdf.output("blob");
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, "_blank");
+    if(!win){ toast("Popup diblokir. Izinkan popup lalu coba lagi."); return; }
+    toast("Gunakan Print di viewer PDF yang terbuka");
+  }).catch(err=>{
+    if(document.body.contains(wrapperP)) document.body.removeChild(wrapperP);
+    toast("Gagal: " + err.message);
   });
 }
 
