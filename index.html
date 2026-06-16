@@ -601,19 +601,30 @@ function renderTblStok(){
       <td>${rp(o.harga_beli)}</td><td>${rp(o.harga_jual)}</td>
       <td>${expBadge(exp)}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
-      <td><button class="btn btn-red btn-sm" data-del="${o.id}">Hapus</button></td>
+      <td><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>
     </tr>`;
   }).join("");
-  tb.querySelectorAll("[data-del]").forEach(btn=>{
-    btn.addEventListener("click",()=>hapusObat(btn.dataset.del));
+  tb.querySelectorAll("[data-edit-stok]").forEach(btn=>{
+    btn.addEventListener("click",()=>editStok(btn.dataset.editStok));
   });
 }
 
-async function hapusObat(id){
-  if(!confirm("Hapus obat ini?")) return;
-  await deleteDoc(doc(db,C_OBAT,id));
-  toast("Obat dihapus");
-  loadStok();
+function editStok(id){
+  const o = stokList.find(x=>x.id===id);
+  if(!o) return;
+  // Tampilkan form dan isi dengan data obat
+  el("card-tambah-stok").style.display="block";
+  el("ms-nama").value = o.nama||"";
+  el("ms-satuan").value = o.satuan||"";
+  el("ms-qty").value = "";
+  el("ms-hbeli").value = o.harga_beli||"";
+  el("ms-hjual").value = o.harga_jual||"";
+  el("ms-exp").value = getExpTerdekat(o)||"";
+  // Simpan id yang sedang diedit
+  el("card-tambah-stok").dataset.editId = id;
+  el("card-tambah-stok").querySelector("h2").textContent = "✏️ Edit Obat";
+  el("btn-simpan-stok-manual").textContent = "💾 Update";
+  window.scrollTo({top:0,behavior:"smooth"});
 }
 
 // Tambah stok manual
@@ -627,7 +638,11 @@ el("btn-show-tambah-stok").addEventListener("click",()=>{
 });
 
 el("btn-batal-stok-manual").addEventListener("click",()=>{
-  el("card-tambah-stok").style.display="none";
+  const card=el("card-tambah-stok");
+  card.style.display="none";
+  card.dataset.editId="";
+  card.querySelector("h2").textContent="➕ Tambah Stok Obat Lama";
+  el("btn-simpan-stok-manual").textContent="💾 Simpan";
   ["ms-nama","ms-qty","ms-hbeli","ms-hjual","ms-exp"].forEach(id=>el(id).value="");
   el("ms-satuan").value="";
 });
@@ -644,33 +659,57 @@ el("ms-nama").addEventListener("input",function(){
 });
 
 el("btn-simpan-stok-manual").addEventListener("click", async ()=>{
-  const nama=el("ms-nama").value.trim().toUpperCase();
-  const satuan=el("ms-satuan").value;
-  const qty=parseInt(el("ms-qty").value)||0;
-  const hbeli=parseFloat(el("ms-hbeli").value)||0;
-  const hjual=parseFloat(el("ms-hjual").value)||0;
-  const exp=el("ms-exp").value;
-  if(!nama||qty<=0){toast("Nama & jumlah wajib diisi");return;}
+  const card = el("card-tambah-stok");
+  const editId = card.dataset.editId||"";
+  const nama  = el("ms-nama").value.trim().toUpperCase();
+  const satuan= el("ms-satuan").value;
+  const qty   = parseInt(el("ms-qty").value)||0;
+  const hbeli = parseFloat(el("ms-hbeli").value)||0;
+  const hjual = parseFloat(el("ms-hjual").value)||0;
+  const exp   = el("ms-exp").value;
 
-  const docId=nama.replace(/\s+/g,"_").toLowerCase();
-  const ref=doc(db,C_OBAT,docId);
-  const snap=await getDoc(ref);
-  const batchId="manual_"+Date.now();
-  const batches={};
-  batches[batchId]={exp,qty,harga_beli:hbeli,sumber:"manual"};
+  if(!nama){toast("Nama obat wajib diisi");return;}
 
-  if(snap.exists()){
-    const existing=snap.data();
-    const existBatches=existing.batches||{};
-    existBatches[batchId]=batches[batchId];
-    await updateDoc(ref,{stok:increment(qty),harga_beli:hbeli||existing.harga_beli,harga_jual:hjual||existing.harga_jual,satuan:satuan||existing.satuan,batches:existBatches,updated:Timestamp.now()});
-    toast("Stok "+nama+" ditambahkan");
+  if(editId){
+    // Mode edit - update data tanpa ubah stok (kecuali ada qty)
+    const ref=doc(db,C_OBAT,editId);
+    const updateData={nama,satuan,harga_beli:hbeli,harga_jual:hjual,updated:Timestamp.now()};
+    if(qty>0){
+      updateData.stok=increment(qty);
+      const batchId="edit_"+Date.now();
+      const snap=await getDoc(ref);
+      const batches=(snap.data()?.batches)||{};
+      batches[batchId]={exp,qty,harga_beli:hbeli,sumber:"edit"};
+      updateData.batches=batches;
+    }
+    await updateDoc(ref,updateData);
+    toast("Obat "+nama+" diperbarui");
+    card.dataset.editId="";
+    card.querySelector("h2").textContent="➕ Tambah Stok Obat Lama";
+    el("btn-simpan-stok-manual").textContent="💾 Simpan";
   } else {
-    await setDoc(ref,{nama,satuan,stok:qty,harga_beli:hbeli,harga_jual:hjual,batches,created:Timestamp.now()});
-    toast("Obat "+nama+" ditambahkan");
+    // Mode tambah baru
+    if(qty<=0){toast("Jumlah wajib diisi untuk tambah stok baru");return;}
+    const docId=nama.replace(/\s+/g,"_").toLowerCase();
+    const ref=doc(db,C_OBAT,docId);
+    const snap=await getDoc(ref);
+    const batchId="manual_"+Date.now();
+    const batches={};
+    batches[batchId]={exp,qty,harga_beli:hbeli,sumber:"manual"};
+    if(snap.exists()){
+      const existing=snap.data();
+      const existBatches=existing.batches||{};
+      existBatches[batchId]=batches[batchId];
+      await updateDoc(ref,{stok:increment(qty),harga_beli:hbeli||existing.harga_beli,harga_jual:hjual||existing.harga_jual,satuan:satuan||existing.satuan,batches:existBatches,updated:Timestamp.now()});
+      toast("Stok "+nama+" ditambahkan");
+    } else {
+      await setDoc(ref,{nama,satuan,stok:qty,harga_beli:hbeli,harga_jual:hjual,batches,created:Timestamp.now()});
+      toast("Obat "+nama+" ditambahkan");
+    }
   }
-  el("card-tambah-stok").style.display="none";
-  ["ms-nama","ms-qty","ms-hbeli","ms-hjual","ms-exp"].forEach(id=>el(id).value="");
+
+  card.style.display="none";
+  ["ms-nama","ms-qty","ms-hbeli","ms-hjual","ms-exp"].forEach(i=>el(i).value="");
   el("ms-satuan").value="";
   loadStok();
 });
