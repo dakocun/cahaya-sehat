@@ -1125,9 +1125,9 @@ async function loadBelanja(){
 
 // ── PENJUALAN ITEMS ───────────────────────────────────────
 function parseItemId(compositeId){
-  if(!compositeId) return {obatId:"",batchId:"__all__"};
+  if(!compositeId) return {obatId:"",batchId:"__all__",expKey:""};
   const parts=(compositeId+"").split("::");
-  return {obatId:parts[0], batchId:parts[1]||"__all__"};
+  return {obatId:parts[0], batchId:parts[1]||"__all__", expKey:parts[2]||""};
 }
 
 function getObatFromItem(item){
@@ -1162,33 +1162,48 @@ function renderItems(mode){
       </div>`;
     }
 
-    // Expand per batch - tiap batch jadi option tersendiri
+    // Expand per batch - gabungkan batch dengan exp sama, tampil per exp date unik
     const obatOpts = stokList.flatMap(o=>{
-      const batches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
-      if(batches.length===0){
-        // Tidak ada batch info - tampil sebagai satu item
+      const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
+      if(allBatches.length===0){
         return [`<option value="${o.id}::__all__">${esc(o.nama)} - sisa: ${o.stok||0}</option>`];
       }
-      // Sort batch by exp date (FIFO)
-      batches.sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
-      return batches.map(([batchId,b])=>{
-        const expTxt = b.exp ? ` (${b.exp})` : "";
-        return `<option value="${o.id}::${batchId}">${esc(o.nama)}${expTxt} - sisa: ${b.qty}</option>`;
+      // Kelompokkan batch berdasarkan exp date
+      const expGroups={};
+      allBatches.forEach(([batchId,b])=>{
+        const expKey=b.exp||"";
+        if(!expGroups[expKey]) expGroups[expKey]={qty:0,batchIds:[],exp:b.exp||""};
+        expGroups[expKey].qty+=b.qty||0;
+        expGroups[expKey].batchIds.push(batchId);
+      });
+      // Sort by exp date (FIFO - exp terdekat dulu)
+      const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
+      if(sorted.length===1 && !sorted[0][1].exp){
+        // Semua batch tanpa exp - tampil satu baris
+        return [`<option value="${o.id}::__all__">${esc(o.nama)} - sisa: ${o.stok||0}</option>`];
+      }
+      return sorted.map(([expKey,g])=>{
+        const expTxt = g.exp ? ` (${g.exp})` : "";
+        // Value pakai batchId pertama dari grup (akan kurangi semua batch exp sama)
+        const val = g.batchIds[0];
+        return `<option value="${o.id}::${val}::${expKey}">${esc(o.nama)}${expTxt} - sisa: ${g.qty}</option>`;
       });
     }).join("");
 
     // Tampilan untuk item yang sudah dipilih
     const selectedNama = (()=>{
       if(!item.id) return "";
-      const [obatId, batchId] = (item.id+"::__all__").split("::");
+      const {obatId,batchId,expKey} = parseItemId(item.id);
       const ob = stokList.find(x=>x.id===obatId);
       if(!ob) return "";
       if(batchId==="__all__"||!ob.batches){
         return esc(ob.nama)+" - sisa: "+(ob.stok||0);
       }
-      const b = ob.batches?.[batchId];
-      const expTxt = b?.exp ? ` (${b.exp})` : "";
-      return esc(ob.nama)+expTxt+" - sisa: "+(b?.qty||0);
+      // Hitung total sisa untuk exp ini
+      const allB=Object.values(ob.batches||{});
+      const sisaExp=allB.filter(b=>b.exp===expKey).reduce((s,b)=>s+(b.qty||0),0);
+      const expTxt=expKey?` (${expKey})`:"";
+      return esc(ob.nama)+expTxt+" - sisa: "+sisaExp;
     })();
 
     return`<div class="item-row" data-idx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
@@ -1217,7 +1232,7 @@ function renderItems(mode){
     textInp.addEventListener("input",function(){
       const typed = this.value;
       // Cari match di semua batch opsi
-      let foundObatId = "", foundBatchId = "__all__", foundObat = null;
+      let foundObatId = "", foundBatchId = "__all__", foundExpKey = "", foundObat = null;
 
       for(const o of stokList){
         const batches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
@@ -1228,11 +1243,18 @@ function renderItems(mode){
           }
         } else {
           let matched=false;
-          for(const [batchId,b] of batches){
-            const expTxt=b.exp?` (${b.exp})`:"";
-            const label=o.nama+expTxt+" - sisa: "+b.qty;
+          // Match per expGroup
+          const expGroups2={};
+          for(const [bid,b] of batches){
+            const ek=b.exp||"";
+            if(!expGroups2[ek]) expGroups2[ek]={qty:0,firstBatchId:bid,exp:b.exp||""};
+            expGroups2[ek].qty+=b.qty||0;
+          }
+          for(const [ek,g] of Object.entries(expGroups2)){
+            const expTxt=g.exp?` (${g.exp})`:"";
+            const label=o.nama+expTxt+" - sisa: "+g.qty;
             if(label.toUpperCase()===typed.toUpperCase()){
-              foundObatId=o.id; foundBatchId=batchId; foundObat=o; matched=true; break;
+              foundObatId=o.id; foundBatchId=g.firstBatchId; foundExpKey=ek; foundObat=o; matched=true; break;
             }
           }
           if(matched) break;
@@ -1478,15 +1500,24 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   const detail=[...detailObat,...detailJasa];
   for(const item of detailObat){
     const o=stokList.find(x=>x.id===item.obatId); if(!o) continue;
-    if(item.batchId==="__all__"||!o.batches?.[item.batchId]){
-      await updateDoc(doc(db,C_OBAT,item.obatId),{stok:increment(-item.qty)});
-    } else {
-      // Kurangi batch tertentu + total stok
-      const batchUpdate={stok:increment(-item.qty)};
-      const curBatchQty=(o.batches[item.batchId].qty||0)-item.qty;
-      batchUpdate["batches."+item.batchId+".qty"]=Math.max(0,curBatchQty);
-      await updateDoc(doc(db,C_OBAT,item.obatId),batchUpdate);
+    const batchUpdate={stok:increment(-item.qty)};
+    if(item.batchId!=="__all__"&&o.batches&&item.expKey){
+      // Kurangi semua batch dengan exp yang sama (FIFO dalam grup exp)
+      let remaining=item.qty;
+      const sameBatches=Object.entries(o.batches)
+        .filter(([,b])=>b.exp===item.expKey&&(b.qty||0)>0)
+        .sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
+      for(const [bid,b] of sameBatches){
+        if(remaining<=0) break;
+        const take=Math.min(remaining,b.qty||0);
+        batchUpdate["batches."+bid+".qty"]=(b.qty||0)-take;
+        remaining-=take;
+      }
+    } else if(item.batchId!=="__all__"&&o.batches?.[item.batchId]){
+      const curQty=o.batches[item.batchId].qty||0;
+      batchUpdate["batches."+item.batchId+".qty"]=Math.max(0,curQty-item.qty);
     }
+    await updateDoc(doc(db,C_OBAT,item.obatId),batchUpdate);
   }
   for(const item of validJasa){
     const l=layananList.find(x=>x.id===item.id);if(!l)continue;
