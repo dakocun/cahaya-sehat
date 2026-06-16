@@ -71,6 +71,7 @@ tr:hover td{background:#f8fafc}
 /* print handled via popup window */
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
@@ -179,7 +180,10 @@ tr:hover td{background:#f8fafc}
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
       <h2 style="margin-bottom:0;padding-bottom:0;border:none">&#128230; Daftar Stok</h2>
-      <button id="btn-show-tambah-stok" class="btn btn-navy btn-sm">&#10133; Tambah Stok Lama</button>
+      <div style="display:flex;gap:8px">
+        <button id="btn-excel-stok" class="btn btn-outline btn-sm" style="border-color:#1d6f42;color:#1d6f42">&#128196; Excel</button>
+        <button id="btn-show-tambah-stok" class="btn btn-navy btn-sm">&#10133; Tambah Stok Lama</button>
+      </div>
     </div>
     <div style="overflow-x:auto">
       <table><thead><tr><th>Nama</th><th>Satuan</th><th>Stok</th><th>H.Beli</th><th>H.Jual</th><th>Exp Terdekat</th><th>Status</th><th></th></tr></thead>
@@ -299,6 +303,10 @@ tr:hover td{background:#f8fafc}
     </div>
   </div>
 
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <button id="btn-excel-rekap" class="btn btn-outline btn-sm" style="border-color:#1d6f42;color:#1d6f42">&#128196; Download Excel</button>
+  </div>
+
   <!-- Rekap Penjualan -->
   <div class="card">
     <h2>&#128722; Rekap Penjualan</h2>
@@ -350,9 +358,10 @@ tr:hover td{background:#f8fafc}
   </div>
 
   <!-- Aksi Modal & Tarik -->
-  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
     <button id="btn-tambah-modal" class="btn btn-teal btn-sm">&#10133; Tambah Modal</button>
     <button id="btn-tarik-saldo" class="btn btn-outline btn-sm" style="border-color:var(--red);color:var(--red)">&#8595; Tarik Saldo</button>
+    <button id="btn-excel-keu" class="btn btn-outline btn-sm" style="border-color:#1d6f42;color:#1d6f42;margin-left:auto">&#128196; Download Excel</button>
   </div>
 
   <!-- Tabel Keuangan -->
@@ -2077,6 +2086,158 @@ async function hapusBelanja(id){
   loadRekapData();
 }
 
+// ── EXCEL HELPERS ────────────────────────────────────────
+function excelDownload(wb, namaFile){
+  XLSX.writeFile(wb, namaFile + ".xlsx");
+}
+
+function styleHeader(ws, range){
+  // SheetJS community edition tidak support styling - pakai data saja
+}
+
+// ── EXCEL STOK ──
+function downloadExcelStok(){
+  if(!stokList.length){ toast("Belum ada data stok"); return; }
+  const rows = [["No","Nama Obat","Satuan","Stok","Harga Beli","Harga Jual","Status","Exp Terdekat"]];
+  stokList.forEach((o,i)=>{
+    const s=o.stok||0;
+    const status=s<=0?"Habis":s<=10?"Menipis":"Aman";
+    const exp=getExpTerdekat(o)||"-";
+    rows.push([i+1, o.nama, o.satuan||"-", s, o.harga_beli||0, o.harga_jual||0, status, exp]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // Set lebar kolom
+  ws["!cols"] = [{wch:4},{wch:25},{wch:10},{wch:8},{wch:14},{wch:14},{wch:10},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Stok Obat");
+  excelDownload(wb, "CahayaSehat-Stok-"+new Date().toISOString().split("T")[0]);
+  toast("Excel stok diunduh!");
+}
+
+// ── EXCEL REKAP ──
+async function downloadExcelRekap(){
+  toast("Menyiapkan Excel...");
+  // Ambil data penjualan
+  const start = getRekapRange();
+  let qJual;
+  if(start){
+    const endP=new Date(start);
+    if(rekapPeriod==="pilih"||rekapPeriod==="bulan"){
+      endP.setMonth(endP.getMonth()+1);endP.setDate(0);endP.setHours(23,59,59,999);
+      qJual=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(start)),where("waktu","<=",Timestamp.fromDate(endP)),orderBy("waktu","desc"));
+    } else {
+      const e=new Date();e.setHours(23,59,59,999);
+      qJual=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(start)),where("waktu","<=",Timestamp.fromDate(e)),orderBy("waktu","desc"));
+    }
+  } else { qJual=query(collection(db,C_TRX),orderBy("waktu","desc")); }
+
+  const snapJual=await getDocs(qJual);
+
+  // Sheet 1: Penjualan
+  const rowsJual=[["No","Waktu","Pembeli","Bayar","Detail Item","Total","Untung","Ket"]];
+  let totJual=0,totUntung=0;
+  snapJual.docs.forEach((d,i)=>{
+    const dt=d.data();
+    const wkt=dt.waktu?.toDate().toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})||"-";
+    const detail=dt.items?.map(it=>it.nama+" x"+it.qty).join(", ")||"-";
+    const isPrib=(dt.bayar||"")==="PRIBADI";
+    totJual+=dt.total||0; totUntung+=dt.untung||0;
+    rowsJual.push([i+1,wkt,dt.pembeli||"-",dt.bayar||"TUNAI",detail,dt.total||0,dt.untung||0,isPrib?"Konsumsi Pribadi/Keluarga":""]);
+  });
+  rowsJual.push([]);
+  rowsJual.push(["","","","","TOTAL",totJual,totUntung,""]);
+
+  // Sheet 2: Pembelian
+  const snapBeli=await getDocs(
+    start
+      ? query(collection(db,C_BELI),where("created",">=",Timestamp.fromDate(start)),orderBy("created","desc"))
+      : query(collection(db,C_BELI),orderBy("created","desc"))
+  );
+  const rowsBeli=[["No","Tanggal","Keterangan","Detail Item","Total Belanja"]];
+  let totBeli=0;
+  const docsB = start
+    ? snapBeli.docs.filter(d=>(d.data().tanggal||"")>=start.toISOString().split("T")[0])
+    : snapBeli.docs;
+  docsB.forEach((d,i)=>{
+    const dt=d.data();
+    const detail=dt.items?.map(it=>it.nama+" x"+it.qty).join(", ")||"-";
+    totBeli+=dt.total||0;
+    rowsBeli.push([i+1,dt.tanggal||"-",dt.keterangan||"-",detail,dt.total||0]);
+  });
+  rowsBeli.push([]);
+  rowsBeli.push(["","","","TOTAL",totBeli]);
+
+  const wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.aoa_to_sheet(rowsJual);
+  ws1["!cols"]=[{wch:4},{wch:20},{wch:14},{wch:12},{wch:35},{wch:14},{wch:14},{wch:22}];
+  const ws2=XLSX.utils.aoa_to_sheet(rowsBeli);
+  ws2["!cols"]=[{wch:4},{wch:12},{wch:18},{wch:35},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws1,"Penjualan");
+  XLSX.utils.book_append_sheet(wb,ws2,"Pembelian");
+
+  const periode=rekapPeriod==="pilih"||rekapPeriod==="bulan"
+    ?["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][rekapBulan]+"-"+rekapTahun
+    :rekapPeriod==="minggu"?"7Hari":rekapPeriod==="semua"?"Semua":"BulanIni";
+  excelDownload(wb,"CahayaSehat-Rekap-"+periode);
+  toast("Excel rekap diunduh!");
+}
+
+// ── EXCEL KEUANGAN ──
+async function downloadExcelKeu(){
+  toast("Menyiapkan Excel...");
+  const range=getKeuRange();
+  let qTrx,qBeli,qKeu;
+  if(range){
+    qTrx=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(range.s)),where("waktu","<=",Timestamp.fromDate(range.e)),orderBy("waktu","asc"));
+    qBeli=query(collection(db,C_BELI),where("created",">=",Timestamp.fromDate(range.s)),where("created","<=",Timestamp.fromDate(range.e)),orderBy("created","asc"));
+    qKeu=query(collection(db,C_KEU),where("waktu",">=",Timestamp.fromDate(range.s)),where("waktu","<=",Timestamp.fromDate(range.e)),orderBy("waktu","asc"));
+  } else {
+    qTrx=query(collection(db,C_TRX),orderBy("waktu","asc"));
+    qBeli=query(collection(db,C_BELI),orderBy("created","asc"));
+    qKeu=query(collection(db,C_KEU),orderBy("waktu","asc"));
+  }
+  const [snapTrx,snapBeli,snapKeu]=await Promise.all([getDocs(qTrx),getDocs(qBeli),getDocs(qKeu)]);
+
+  const rows=[["No","Tanggal","Jenis","No. Nota / Keterangan","Uang Masuk","Uang Keluar"]];
+  const allRows=[];
+
+  snapTrx.docs.forEach(d=>{
+    const dt=d.data();
+    const tgl=dt.tgl||dt.waktu?.toDate().toISOString().split("T")[0]||"-";
+    const isPrib=(dt.bayar||"")==="PRIBADI";
+    allRows.push({sort:dt.waktu?.toDate()||new Date(tgl),tgl,jenis:"Penjualan",nota:d.id.slice(-8).toUpperCase()+(dt.pembeli?" - "+dt.pembeli:""),masuk:isPrib?0:(dt.total||0),keluar:0});
+  });
+  snapBeli.docs.forEach(d=>{
+    const dt=d.data();
+    allRows.push({sort:dt.created?.toDate()||new Date(dt.tanggal||""),tgl:dt.tanggal||"-",jenis:"Belanja",nota:dt.keterangan||"-",masuk:0,keluar:dt.total||0});
+  });
+  snapKeu.docs.forEach(d=>{
+    const dt=d.data();
+    allRows.push({sort:dt.waktu?.toDate()||new Date(dt.tanggal||""),tgl:dt.tanggal||"-",jenis:dt.tipe==="modal"?"Tambah Modal":"Tarik Saldo",nota:dt.keterangan||"-",masuk:dt.tipe==="modal"?dt.jumlah:0,keluar:dt.tipe==="tarik"?dt.jumlah:0});
+  });
+
+  allRows.sort((a,b)=>a.sort-b.sort);
+  let totMasuk=0,totKeluar=0;
+  allRows.forEach((r,i)=>{
+    totMasuk+=r.masuk;totKeluar+=r.keluar;
+    rows.push([i+1,r.tgl,r.jenis,r.nota,r.masuk||"",r.keluar||""]);
+  });
+  rows.push([]);
+  rows.push(["","","","TOTAL UANG MASUK",totMasuk,""]);
+  rows.push(["","","","TOTAL UANG KELUAR","",totKeluar]);
+  rows.push(["","","","SALDO SEHARUSNYA",totMasuk-totKeluar,""]);
+
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"]=[{wch:4},{wch:12},{wch:15},{wch:30},{wch:16},{wch:16}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Keuangan");
+  const periode=keuPeriod==="bulan"
+    ?["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][keuBulan]+"-"+keuTahun
+    :keuPeriod==="7hari"?"7Hari":keuPeriod==="semua"?"Semua":"HariIni";
+  excelDownload(wb,"CahayaSehat-Keuangan-"+periode);
+  toast("Excel keuangan diunduh!");
+}
+
 // ── INIT ─────────────────────────────────────────────────
 // Seed layanan default jika kosong
 async function seedLayanan(){
@@ -2096,6 +2257,11 @@ async function seedLayanan(){
 }
 
 seedLayanan().then(()=>loadDashboard());
+
+// Wire Excel buttons
+document.getElementById("btn-excel-stok")?.addEventListener("click", downloadExcelStok);
+document.getElementById("btn-excel-rekap")?.addEventListener("click", downloadExcelRekap);
+document.getElementById("btn-excel-keu")?.addEventListener("click", downloadExcelKeu);
 wireBayarBtns("jual");
 wireBayarBtns("tes");
 </script>
