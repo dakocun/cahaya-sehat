@@ -1171,9 +1171,12 @@ function renderItems(mode){
     const obatOpts = stokList.flatMap(o=>{
       const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
       if(allBatches.length===0){
-        const label = o.nama + " - sisa: " + (o.stok||0);
-        window._obatLookup[label.toUpperCase()] = o.id+"::__all__::";
-        return [`<option value="${esc(label)}"></option>`];
+        // Key lookup = nama saja
+        const key = o.nama;
+        window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
+        // Value option = nama saja (yang tampil di field saat dipilih)
+        // Label option = nama + sisa stok (yang tampil di dropdown)
+        return [`<option value="${esc(o.nama)}" label="${esc(o.nama)} — sisa: ${o.stok||0}"></option>`];
       }
       const expGroups={};
       allBatches.forEach(([batchId,b])=>{
@@ -1183,32 +1186,28 @@ function renderItems(mode){
       });
       const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
       if(sorted.length===1 && !sorted[0][1].exp){
-        const label = o.nama + " - sisa: " + (o.stok||0);
-        window._obatLookup[label.toUpperCase()] = o.id+"::__all__::";
-        return [`<option value="${esc(label)}"></option>`];
+        const key = o.nama;
+        window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
+        return [`<option value="${esc(o.nama)}" label="${esc(o.nama)} — sisa: ${o.stok||0}"></option>`];
       }
       return sorted.map(([expKey,g])=>{
         const expTxt = g.exp ? " ("+g.exp+")" : "";
-        const label = o.nama + expTxt + " - sisa: " + g.qty;
-        window._obatLookup[label.toUpperCase()] = o.id+"::"+g.firstBatchId+"::"+expKey;
-        return `<option value="${esc(label)}"></option>`;
+        const key = o.nama + expTxt;
+        const compositeVal = o.id+"::"+g.firstBatchId+"::"+expKey;
+        window._obatLookup[key.toUpperCase()] = compositeVal;
+        // Value = nama+exp (tampil di field), label = nama+exp+sisa (tampil di dropdown)
+        return `<option value="${esc(key)}" label="${esc(key)} — sisa: ${g.qty}"></option>`;
       });
     }).join("");
 
-    // Tampilan untuk item yang sudah dipilih
+    // Tampilan di input field - cukup nama + exp date saja
     const selectedNama = (()=>{
       if(!item.id) return "";
-      const {obatId,batchId,expKey} = parseItemId(item.id);
+      const {obatId,expKey} = parseItemId(item.id);
       const ob = stokList.find(x=>x.id===obatId);
       if(!ob) return "";
-      if(batchId==="__all__"||!ob.batches){
-        return esc(ob.nama)+" - sisa: "+(ob.stok||0);
-      }
-      // Hitung total sisa untuk exp ini
-      const allB=Object.values(ob.batches||{});
-      const sisaExp=allB.filter(b=>b.exp===expKey).reduce((s,b)=>s+(b.qty||0),0);
-      const expTxt=expKey?` (${expKey})`:"";
-      return esc(ob.nama)+expTxt+" - sisa: "+sisaExp;
+      const expTxt = expKey ? " ("+expKey+")" : "";
+      return ob.nama + expTxt;
     })();
 
     return`<div class="item-row" data-idx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
@@ -1234,7 +1233,7 @@ function renderItems(mode){
     const textInp = row.querySelector(".sel-obat-text");
     const hiddenInp = row.querySelector(".sel-obat-val");
 
-        function applyObatSelection(typed){
+        const applyObatSelection = (typed) => {
       const compositeId = (window._obatLookup||{})[typed.trim().toUpperCase()];
       if(compositeId){
         const {obatId,batchId,expKey}=parseItemId(compositeId);
@@ -1259,7 +1258,7 @@ function renderItems(mode){
         }
       }
       return false;
-    }
+    };
 
     textInp.addEventListener("input",function(){
       applyObatSelection(this.value);
