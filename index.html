@@ -656,7 +656,7 @@ function buildObatLookup(){
   stokList.forEach(o=>{
     const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
     if(allBatches.length===0){
-      window._obatLookup[o.nama.toUpperCase()] = o.id+"::__all__::";
+      window._obatLookup[o.nama.trim().replace(/\s+/g,' ').toUpperCase()] = o.id+"::__all__::";
       return;
     }
     const expGroups={};
@@ -667,12 +667,12 @@ function buildObatLookup(){
     });
     const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
     if(sorted.length===1&&!sorted[0][1].exp){
-      window._obatLookup[o.nama.toUpperCase()] = o.id+"::__all__::";
+      window._obatLookup[o.nama.trim().replace(/\s+/g,' ').toUpperCase()] = o.id+"::__all__::";
       return;
     }
     sorted.forEach(([expKey,g])=>{
       const expTxt=g.exp?" ("+g.exp+")":"";
-      const key=(o.nama+expTxt).toUpperCase();
+      const key=(o.nama+expTxt).trim().replace(/\s+/g,' ').toUpperCase();
       window._obatLookup[key] = o.id+"::"+g.firstBatchId+"::"+expKey;
     });
   });
@@ -1205,7 +1205,7 @@ function renderItems(mode){
         window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
         // Value option = nama saja (yang tampil di field saat dipilih)
         // Label option = nama + sisa stok (yang tampil di dropdown)
-        return [`<option value="${esc(o.nama)}" label="${esc(o.nama)} — sisa: ${o.stok||0}"></option>`];
+        return [`<option value="${o.nama}" label="${o.nama} — sisa: ${o.stok||0}"></option>`];
       }
       const expGroups={};
       allBatches.forEach(([batchId,b])=>{
@@ -1217,7 +1217,7 @@ function renderItems(mode){
       if(sorted.length===1 && !sorted[0][1].exp){
         const key = o.nama;
         window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
-        return [`<option value="${esc(o.nama)}" label="${esc(o.nama)} — sisa: ${o.stok||0}"></option>`];
+        return [`<option value="${o.nama}" label="${o.nama} — sisa: ${o.stok||0}"></option>`];
       }
       return sorted.map(([expKey,g])=>{
         const expTxt = g.exp ? " ("+g.exp+")" : "";
@@ -1225,7 +1225,7 @@ function renderItems(mode){
         const compositeVal = o.id+"::"+g.firstBatchId+"::"+expKey;
         window._obatLookup[key.toUpperCase()] = compositeVal;
         // Value = nama+exp (tampil di field), label = nama+exp+sisa (tampil di dropdown)
-        return `<option value="${esc(key)}" label="${esc(key)} — sisa: ${g.qty}"></option>`;
+        return `<option value="${key}" label="${key} — sisa: ${g.qty}"></option>`;
       });
     }).join("");
 
@@ -1263,7 +1263,7 @@ function renderItems(mode){
     const hiddenInp = row.querySelector(".sel-obat-val");
 
         const applyObatSelection = (typed) => {
-      const compositeId = (window._obatLookup||{})[typed.trim().toUpperCase()];
+      const compositeId = (window._obatLookup||{})[typed.trim().replace(/\s+/g,' ').toUpperCase()];
       if(compositeId){
         const {obatId,batchId,expKey}=parseItemId(compositeId);
         const found2=stokList.find(x=>x.id===obatId);
@@ -1352,12 +1352,11 @@ function renderJasa(mode){
       if(stokS<=0) stripInfo=`<small style="color:var(--red);font-weight:600">⛔ Strip habis!</small>`;
       else if(stokS<4) stripInfo=`<small style="color:var(--yellow);font-weight:600">⚠️ Strip: ${stokS}</small>`;
       else stripInfo=`<small style="color:var(--muted)">✓ Strip: ${stokS}</small>`;
-    } else if(l && STRIP_MAP[l.nama.toUpperCase()]===undefined){
-      // Layanan yg memang tidak butuh strip (Cek Tensi)
-      stripInfo="";
-    } else {
-      stripInfo=`<small style="color:var(--muted)">—</small>`;
+    } else if(l && STRIP_MAP[l.nama.toUpperCase()]!==undefined){
+      // Butuh strip tapi strip belum ada di stok
+      stripInfo=`<small style="color:var(--red);font-weight:600">⛔ Strip belum ada!</small>`;
     }
+    // Cek Tensi & layanan tanpa strip: stripInfo tetap ""
     const harga=item.harga_override!=null?item.harga_override:(l?l.harga:0);
     const isOverride=item.harga_override!=null;
     const qty=item.qty||1;
@@ -1426,13 +1425,17 @@ function showJasaPicker(mode){
     <div style="font-weight:600;color:var(--navy);margin-bottom:12px">Pilih Layanan</div>
     <div>${layananList.map(l=>{
       const strip = getStripObat(l.nama);
+      const needsStrip = STRIP_MAP[l.nama.toUpperCase()] !== undefined;
       const stokStrip = strip ? (strip.stok||0) : null;
-      const habis = stokStrip !== null && stokStrip <= 0;
-      const warning = strip
-        ? (habis
-          ? `<span style="color:var(--red);font-size:10px;display:block">⛔ Strip habis</span>`
-          : `<span style="color:${stokStrip<=5?"var(--yellow)":"var(--teal)"};font-size:10px;display:block">${stokStrip<=5?"⚠️":"✓"} Strip: ${stokStrip}</span>`)
-        : "";
+      const habis = needsStrip && (!strip || stokStrip <= 0);
+      let warning = "";
+      if(needsStrip && strip){
+        if(stokStrip<=0) warning=`<span style="color:var(--red);font-size:10px;display:block">⛔ Strip habis</span>`;
+        else if(stokStrip<4) warning=`<span style="color:var(--yellow);font-size:10px;display:block">⚠️ Strip: ${stokStrip}</span>`;
+        else warning=`<span style="color:var(--teal);font-size:10px;display:block">✓ Strip: ${stokStrip}</span>`;
+      } else if(needsStrip && !strip){
+        warning=`<span style="color:var(--red);font-size:10px;display:block">⛔ Strip belum ada di stok</span>`;
+      }
       return `<button class="btn btn-outline btn-sm" style="margin:4px;display:inline-flex;flex-direction:column;align-items:flex-start;${habis?"opacity:.45;cursor:not-allowed;":""}text-align:left" data-li="${l.id}" ${habis?"disabled":""}>
         <span>${esc(l.nama)} &mdash; ${rp(l.harga)}</span>
         ${warning}
