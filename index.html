@@ -1148,7 +1148,7 @@ function renderItems(mode){
     const opts=stokList.map(o=>
       `<option value="${o.id}" ${o.id===item.id?"selected":""}>${esc(o.nama)} (${o.stok||0} ${esc(o.satuan||"")})</option>`
     ).join("");
-    const o=stokList.find(x=>x.id===item.id);
+    const o=getObatFromItem(item);
     const hjual=hargaJualEfektif(item);
     const untung=o?((hjual-o.harga_beli)*item.qty):0;
 
@@ -1156,9 +1156,10 @@ function renderItems(mode){
     let hjualRow="";
     if(o){
       hjualRow=`<div style="display:flex;align-items:center;gap:3px">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0">Rp</span>
         <input type="number" class="hjual-input" value="${hjual}" min="0"
           style="width:80px;padding:5px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600;text-align:right">
-        <span class="hjual-lbl" style="font-size:10px;color:var(--teal);flex-shrink:0">${item.harga_jual_override!=null&&item.harga_jual_override>0?"✏️":"Rp"}</span>
+        <span class="hjual-lbl" style="font-size:10px;color:var(--teal);flex-shrink:0">${item.harga_jual_override!=null?"✏️":""}</span>
       </div>`;
     }
 
@@ -1318,9 +1319,12 @@ function renderJasa(mode){
     const l=layananList.find(x=>x.id===item.id);
     const strip=l?getStripObat(l.nama):null;
     const stokS=strip?(strip.stok||0):null;
-    const stripInfo=strip
-      ?`<small style="color:${stokS<=0?"var(--red)":stokS<=5?"var(--yellow)":"var(--muted)"}">(strip: ${stokS})</small>`
-      :"";
+    let stripInfo="";
+    if(strip){
+      if(stokS<=0) stripInfo=`<small style="color:var(--red);font-weight:600">⛔ Strip habis!</small>`;
+      else if(stokS<=5) stripInfo=`<small style="color:var(--yellow);font-weight:600">⚠️ Strip: ${stokS}</small>`;
+      else stripInfo=`<small style="color:var(--muted)">Strip: ${stokS}</small>`;
+    }
     const harga=item.harga_override!=null?item.harga_override:(l?l.harga:0);
     const isOverride=item.harga_override!=null;
     const qty=item.qty||1;
@@ -1363,7 +1367,7 @@ function hitungTotalJual(mode){
   const jasaArr=mode==="jual"?jasaItems:tesJasaItems;
   let subtotal=0;
   obatArr.forEach(item=>{
-    const o=stokList.find(x=>x.id===item.id);if(!o)return;
+    const o=getObatFromItem(item);if(!o)return;
     subtotal+=hargaJualEfektif(item)*item.qty;
   });
   jasaArr.forEach(item=>{
