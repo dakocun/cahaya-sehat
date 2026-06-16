@@ -1162,31 +1162,36 @@ function renderItems(mode){
       </div>`;
     }
 
-    // Expand per batch - gabungkan batch dengan exp sama, tampil per exp date unik
+    // Build lookup map: label → compositeId
+    // datalist harus value=label (yang tampil di dropdown)
+    // compositeId disimpan di map lalu diambil saat match
+    window._obatLookup = window._obatLookup || {};
+    window._obatLookup = {}; // reset tiap render
+
     const obatOpts = stokList.flatMap(o=>{
       const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
       if(allBatches.length===0){
-        return [`<option value="${o.id}::__all__">${esc(o.nama)} - sisa: ${o.stok||0}</option>`];
+        const label = o.nama + " - sisa: " + (o.stok||0);
+        window._obatLookup[label.toUpperCase()] = o.id+"::__all__::";
+        return [`<option value="${esc(label)}"></option>`];
       }
-      // Kelompokkan batch berdasarkan exp date
       const expGroups={};
       allBatches.forEach(([batchId,b])=>{
         const expKey=b.exp||"";
-        if(!expGroups[expKey]) expGroups[expKey]={qty:0,batchIds:[],exp:b.exp||""};
+        if(!expGroups[expKey]) expGroups[expKey]={qty:0,firstBatchId:batchId,exp:b.exp||""};
         expGroups[expKey].qty+=b.qty||0;
-        expGroups[expKey].batchIds.push(batchId);
       });
-      // Sort by exp date (FIFO - exp terdekat dulu)
       const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
       if(sorted.length===1 && !sorted[0][1].exp){
-        // Semua batch tanpa exp - tampil satu baris
-        return [`<option value="${o.id}::__all__">${esc(o.nama)} - sisa: ${o.stok||0}</option>`];
+        const label = o.nama + " - sisa: " + (o.stok||0);
+        window._obatLookup[label.toUpperCase()] = o.id+"::__all__::";
+        return [`<option value="${esc(label)}"></option>`];
       }
       return sorted.map(([expKey,g])=>{
-        const expTxt = g.exp ? ` (${g.exp})` : "";
-        // Value pakai batchId pertama dari grup (akan kurangi semua batch exp sama)
-        const val = g.batchIds[0];
-        return `<option value="${o.id}::${val}::${expKey}">${esc(o.nama)}${expTxt} - sisa: ${g.qty}</option>`;
+        const expTxt = g.exp ? " ("+g.exp+")" : "";
+        const label = o.nama + expTxt + " - sisa: " + g.qty;
+        window._obatLookup[label.toUpperCase()] = o.id+"::"+g.firstBatchId+"::"+expKey;
+        return `<option value="${esc(label)}"></option>`;
       });
     }).join("");
 
