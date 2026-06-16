@@ -1068,23 +1068,26 @@ el("btn-simpan-belanja").addEventListener("click", async ()=>{
   await addDoc(collection(db,C_BELI),{tanggal:tgl,keterangan:ket,items:detail,total,created:Timestamp.now()});
 
   // Update / tambah stok obat
-  for(const item of detail){
-    const docId=item.nama.replace(/\s+/g,"_").toLowerCase();
+  for(let idx=0; idx<detail.length; idx++){
+    const item=detail[idx];
+    // docId dari nama - pakai split join hindari regex issue
+    const docId=item.nama.trim().split(" ").join("_").toLowerCase();
     const ref=doc(db,C_OBAT,docId);
     const snap=await getDoc(ref);
-    const batchId="batch_"+Date.now()+"_"+Math.random().toString(36).slice(2,6);
+    // batchId unik per item pakai index + timestamp + random
+    const batchId="batch_"+Date.now()+"_"+idx+"_"+Math.random().toString(36).slice(2,6);
     if(snap.exists()){
       const existing=snap.data();
-      const batches=existing.batches||{};
-      batches[batchId]={exp:item.exp,qty:item.qty,harga_beli:item.harga_beli};
-      await updateDoc(ref,{
+      // Pakai dot notation supaya tidak overwrite batch lain
+      const updateData={
         stok:increment(item.qty),
         harga_beli:item.harga_beli,
         harga_jual:item.harga_jual||existing.harga_jual||0,
         satuan:item.satuan||existing.satuan||"",
-        batches,
         updated:Timestamp.now()
-      });
+      };
+      updateData["batches."+batchId]={exp:item.exp,qty:item.qty,harga_beli:item.harga_beli};
+      await updateDoc(ref,updateData);
     } else {
       const batches={};
       batches[batchId]={exp:item.exp,qty:item.qty,harga_beli:item.harga_beli};
@@ -1095,6 +1098,8 @@ el("btn-simpan-belanja").addEventListener("click", async ()=>{
         batches,created:Timestamp.now()
       });
     }
+    // Delay kecil supaya timestamp batchId tidak sama
+    await new Promise(r=>setTimeout(r,2));
   }
 
   toast("Belanja disimpan & stok diperbarui!");
