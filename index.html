@@ -805,10 +805,28 @@ async function loadLayanan(){
   return layananList;
 }
 
+// Mapping nama layanan → kata kunci strip
+const STRIP_MAP = {
+  "CEK GULA DARAH":   "GULA DARAH",
+  "CEK KOLESTEROL":   "KOLESTEROL",
+  "CEK ASAM URAT":    "ASAM URAT",
+};
+
+function getStripObat(namaLayanan){
+  const key = STRIP_MAP[namaLayanan.toUpperCase()];
+  if(!key) return null; // Cek Tensi tidak butuh strip
+  return stokList.find(x=>
+    x.nama.toUpperCase().includes("STRIP") &&
+    x.nama.toUpperCase().includes(key)
+  ) || null;
+}
+
 function stripTerkait(namaLayanan){
-  const key=namaLayanan.toLowerCase().replace("cek ","").trim();
-  const strip=stokList.find(x=>x.nama.toLowerCase().includes("strip")&&x.nama.toLowerCase().includes(key));
-  return strip ? strip.nama : '<span style="color:var(--muted)">-</span>';
+  const strip = getStripObat(namaLayanan);
+  if(!strip) return '<span style="color:var(--muted)">-</span>';
+  const stok = strip.stok||0;
+  const color = stok<=0?"var(--red)":stok<=5?"var(--yellow)":"var(--green)";
+  return `<span style="color:${color};font-weight:600">${strip.nama} (${stok})</span>`;
 }
 
 function renderTblLayanan(){
@@ -1101,9 +1119,20 @@ async function loadBelanja(){
 }
 
 // ── PENJUALAN ITEMS ───────────────────────────────────────
+function parseItemId(compositeId){
+  if(!compositeId) return {obatId:"",batchId:"__all__"};
+  const parts=(compositeId+"").split("::");
+  return {obatId:parts[0], batchId:parts[1]||"__all__"};
+}
+
+function getObatFromItem(item){
+  const {obatId}=parseItemId(item.id);
+  return stokList.find(x=>x.id===obatId)||null;
+}
+
 function hargaJualEfektif(item){
   if(item.harga_jual_override!=null) return item.harga_jual_override;
-  const o=stokList.find(x=>x.id===item.id);
+  const o=getObatFromItem(item);
   return o?o.harga_jual:0;
 }
 
@@ -1128,8 +1157,44 @@ function renderItems(mode){
       </div>`;
     }
 
+    // Expand per batch - tiap batch jadi option tersendiri
+    const obatOpts = stokList.flatMap(o=>{
+      const batches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
+      if(batches.length===0){
+        // Tidak ada batch info - tampil sebagai satu item
+        return [`<option value="${o.id}::__all__">${esc(o.nama)} - sisa: ${o.stok||0}</option>`];
+      }
+      // Sort batch by exp date (FIFO)
+      batches.sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
+      return batches.map(([batchId,b])=>{
+        const expTxt = b.exp ? ` (${b.exp})` : "";
+        return `<option value="${o.id}::${batchId}">${esc(o.nama)}${expTxt} - sisa: ${b.qty}</option>`;
+      });
+    }).join("");
+
+    // Tampilan untuk item yang sudah dipilih
+    const selectedNama = (()=>{
+      if(!item.id) return "";
+      const [obatId, batchId] = (item.id+"::__all__").split("::");
+      const ob = stokList.find(x=>x.id===obatId);
+      if(!ob) return "";
+      if(batchId==="__all__"||!ob.batches){
+        return esc(ob.nama)+" - sisa: "+(ob.stok||0);
+      }
+      const b = ob.batches?.[batchId];
+      const expTxt = b?.exp ? ` (${b.exp})` : "";
+      return esc(ob.nama)+expTxt+" - sisa: "+(b?.qty||0);
+    })();
+
     return`<div class="item-row" data-idx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
-      <select class="sel-obat" style="flex:1;min-width:0;font-size:13px"><option value="">-- Pilih --</option>${opts}</select>
+      <div style="flex:1;min-width:0;position:relative">
+        <input type="text" class="sel-obat-text" list="obat-dl-${i}"
+          value="${selectedNama}"
+          style="width:100%;padding:7px 10px;font-size:13px;border:1.5px solid var(--border);border-radius:8px"
+          autocomplete="off">
+        <datalist id="obat-dl-${i}">${obatOpts}</datalist>
+        <input type="hidden" class="sel-obat-val" value="${item.id||""}">
+      </div>
       <input type="number" class="qty-input" value="${item.qty}" min="1"
         style="width:38px;padding:5px 4px;font-size:13px;text-align:center;flex-shrink:0">
       <div style="flex-shrink:0">${hjualRow}</div>
@@ -1141,20 +1206,60 @@ function renderItems(mode){
     const i=+row.dataset.idx;
     const arr=mode==="jual"?jualItems:tesItems;
 
-    row.querySelector(".sel-obat").addEventListener("change",function(){
-      const newId=this.value;
-      // Cek apakah obat ini sudah ada di baris lain
-      const dupIdx=arr.findIndex((it,idx)=>idx!==i && it.id===newId && newId!=="");
-      if(dupIdx!==-1){
-        // Gabungkan qty ke baris yang sudah ada
-        arr[dupIdx].qty+=arr[i].qty||1;
-        arr.splice(i,1);
-      } else {
-        arr[i].id=newId;
-        arr[i].harga_jual_override=null;
+    const textInp = row.querySelector(".sel-obat-text");
+    const hiddenInp = row.querySelector(".sel-obat-val");
+
+    textInp.addEventListener("input",function(){
+      const typed = this.value;
+      // Cari match di semua batch opsi
+      let foundObatId = "", foundBatchId = "__all__", foundObat = null;
+
+      for(const o of stokList){
+        const batches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
+        if(batches.length===0){
+          const label = o.nama+" - sisa: "+(o.stok||0);
+          if(label.toUpperCase()===typed.toUpperCase()||o.nama.toUpperCase()===typed.toUpperCase()){
+            foundObatId=o.id; foundBatchId="__all__"; foundObat=o; break;
+          }
+        } else {
+          let matched=false;
+          for(const [batchId,b] of batches){
+            const expTxt=b.exp?` (${b.exp})`:"";
+            const label=o.nama+expTxt+" - sisa: "+b.qty;
+            if(label.toUpperCase()===typed.toUpperCase()){
+              foundObatId=o.id; foundBatchId=batchId; foundObat=o; matched=true; break;
+            }
+          }
+          if(matched) break;
+        }
       }
-      renderItems(mode);
+
+      if(foundObat){
+        const compositeId = foundObatId+"::"+foundBatchId;
+        hiddenInp.value=compositeId;
+        const dupIdx=arr.findIndex((it,idx)=>idx!==i&&it.id===compositeId);
+        if(dupIdx!==-1){
+          arr[dupIdx].qty+=arr[i].qty||1;
+          arr.splice(i,1);
+          renderItems(mode);
+        } else {
+          arr[i].id=compositeId;
+          arr[i].harga_jual_override=null;
+          const hjualInp=row.querySelector(".hjual-input");
+          if(hjualInp) hjualInp.value=foundObat.harga_jual||0;
+          hitungTotalJual(mode);
+          const lbl=row.querySelector(".hjual-lbl");
+          if(lbl) lbl.textContent="Rp";
+        }
+      } else {
+        hiddenInp.value="";
+        arr[i].id="";
+        arr[i].harga_jual_override=null;
+        hitungTotalJual(mode);
+      }
     });
+
+    textInp.addEventListener("focus",function(){ this.select(); });
     row.querySelector(".qty-input").addEventListener("input",function(){
       arr[i].qty=parseInt(this.value)||1;
       hitungTotalJual(mode);
@@ -1198,9 +1303,11 @@ function renderJasa(mode){
   }
   wrap.innerHTML=items.map((item,i)=>{
     const l=layananList.find(x=>x.id===item.id);
-    const key=l?l.nama.toLowerCase().replace("cek ","").trim():"";
-    const strip=stokList.find(x=>x.nama.toLowerCase().includes("strip")&&x.nama.toLowerCase().includes(key));
-    const stripInfo=strip?`<small style="color:var(--muted)">(strip: ${strip.stok||0})</small>`:"";
+    const strip=l?getStripObat(l.nama):null;
+    const stokS=strip?(strip.stok||0):null;
+    const stripInfo=strip
+      ?`<small style="color:${stokS<=0?"var(--red)":stokS<=5?"var(--yellow)":"var(--muted)"}">(strip: ${stokS})</small>`
+      :"";
     const harga=item.harga_override!=null?item.harga_override:(l?l.harga:0);
     const isOverride=item.harga_override!=null;
     const qty=item.qty||1;
@@ -1267,7 +1374,20 @@ function showJasaPicker(mode){
   picker.style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px";
   picker.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;max-width:320px;width:100%">
     <div style="font-weight:600;color:var(--navy);margin-bottom:12px">Pilih Layanan</div>
-    <div>${layananList.map(l=>`<button class="btn btn-outline btn-sm" style="margin:4px;display:inline-flex" data-li="${l.id}">${esc(l.nama)} &mdash; ${rp(l.harga)}</button>`).join("")}</div>
+    <div>${layananList.map(l=>{
+      const strip = getStripObat(l.nama);
+      const stokStrip = strip ? (strip.stok||0) : null;
+      const habis = stokStrip !== null && stokStrip <= 0;
+      const warning = strip
+        ? (habis
+          ? `<span style="color:var(--red);font-size:10px;display:block">⛔ Strip habis</span>`
+          : `<span style="color:${stokStrip<=5?"var(--yellow)":"var(--teal)"};font-size:10px;display:block">${stokStrip<=5?"⚠️":"✓"} Strip: ${stokStrip}</span>`)
+        : "";
+      return `<button class="btn btn-outline btn-sm" style="margin:4px;display:inline-flex;flex-direction:column;align-items:flex-start;${habis?"opacity:.45;cursor:not-allowed;":""}text-align:left" data-li="${l.id}" ${habis?"disabled":""}>
+        <span>${esc(l.nama)} &mdash; ${rp(l.harga)}</span>
+        ${warning}
+      </button>`;
+    }).join("")}</div>
     <button class="btn btn-outline btn-sm" style="margin-top:12px" id="jasa-picker-close">Batal</button>
   </div>`;
   document.body.appendChild(picker);
@@ -1318,14 +1438,22 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   const tglManual=tglInput&&tglInput!==today?tglInput:null;
   const waktuSimpan=tglInput?new Date(tglInput+"T"+new Date().toTimeString().slice(0,8)):new Date();
   for(const item of validObat){
-    const o=stokList.find(x=>x.id===item.id);
-    if(!o||o.stok<item.qty){toast("Stok "+(o?.nama||"")+" tidak cukup");return;}
+    const {obatId,batchId}=parseItemId(item.id);
+    const o=stokList.find(x=>x.id===obatId);
+    if(!o){toast("Obat tidak ditemukan");return;}
+    if(batchId==="__all__"){
+      if((o.stok||0)<item.qty){toast("Stok "+o.nama+" tidak cukup (sisa: "+(o.stok||0)+")");return;}
+    } else {
+      const bQty=(o.batches?.[batchId]?.qty)||0;
+      if(bQty<item.qty){toast("Stok batch "+o.nama+" tidak cukup (sisa: "+bQty+")");return;}
+    }
   }
   for(const item of validJasa){
     const l=layananList.find(x=>x.id===item.id);if(!l)continue;
-    const key=l.nama.toLowerCase().replace("cek ","").trim();
-    const strip=stokList.find(x=>x.nama.toLowerCase().includes("strip")&&x.nama.toLowerCase().includes(key));
-    if(strip&&strip.stok<1){toast("Stok strip untuk "+l.nama+" habis");return;}
+    const strip=getStripObat(l.nama);
+    if(strip&&(strip.stok||0)<(item.qty||1)){
+      toast("Stok "+strip.nama+" tidak cukup (sisa: "+(strip.stok||0)+")");return;
+    }
   }
   let total=0,untung=0;
   const detailObat=validObat.map(item=>{
@@ -1343,13 +1471,22 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
     return{tipe:"jasa",nama:l.nama,satuan:"layanan",qty:qJasa,harga_jual:hJasa,harga_beli:0,subtotal:hJasa*qJasa};
   });
   const detail=[...detailObat,...detailJasa];
-  for(const item of validObat)
-    await updateDoc(doc(db,C_OBAT,item.id),{stok:increment(-item.qty)});
+  for(const item of detailObat){
+    const o=stokList.find(x=>x.id===item.obatId); if(!o) continue;
+    if(item.batchId==="__all__"||!o.batches?.[item.batchId]){
+      await updateDoc(doc(db,C_OBAT,item.obatId),{stok:increment(-item.qty)});
+    } else {
+      // Kurangi batch tertentu + total stok
+      const batchUpdate={stok:increment(-item.qty)};
+      const curBatchQty=(o.batches[item.batchId].qty||0)-item.qty;
+      batchUpdate["batches."+item.batchId+".qty"]=Math.max(0,curBatchQty);
+      await updateDoc(doc(db,C_OBAT,item.obatId),batchUpdate);
+    }
+  }
   for(const item of validJasa){
     const l=layananList.find(x=>x.id===item.id);if(!l)continue;
-    const key=l.nama.toLowerCase().replace("cek ","").trim();
-    const strip=stokList.find(x=>x.nama.toLowerCase().includes("strip")&&x.nama.toLowerCase().includes(key));
-    if(strip) await updateDoc(doc(db,C_OBAT,strip.id),{stok:increment(-1)});
+    const strip=getStripObat(l.nama);
+    if(strip) await updateDoc(doc(db,C_OBAT,strip.id),{stok:increment(-(item.qty||1))});
   }
   const bayar=getBayarInfo("jual");
   const isPribadi=bayar==="PRIBADI";
@@ -1858,9 +1995,15 @@ async function hapusTrx(id){
   for(const item of (dt.items||[])){
     if(item.tipe==="jasa") continue;
     // Cari obat berdasarkan nama
-    const obat=stokList.find(o=>o.nama===item.nama);
-    if(obat){
-      await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(item.qty||1)});
+    const obatId2=item.obatId||stokList.find(o=>o.nama===item.nama)?.id;
+    if(obatId2){
+      const bUpdate={stok:increment(item.qty||1)};
+      if(item.batchId&&item.batchId!=="__all__"){
+        const ob=stokList.find(x=>x.id===obatId2);
+        if(ob?.batches?.[item.batchId]!=null)
+          bUpdate["batches."+item.batchId+".qty"]=increment(item.qty||1);
+      }
+      await updateDoc(doc(db,C_OBAT,obatId2),bUpdate);
     }
   }
 
