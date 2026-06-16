@@ -393,6 +393,34 @@ tr:hover td{background:#f8fafc}
   </div>
 </div>
 
+<!-- MODAL EDIT BELANJA -->
+<div id="modal-edit-beli" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:#fff;border-radius:14px;padding:24px;max-width:520px;width:100%;margin:auto">
+    <h3 style="color:var(--navy);margin-bottom:4px">&#9998; Edit Belanja</h3>
+    <div id="edit-beli-id-label" style="font-size:11px;color:var(--muted);margin-bottom:16px"></div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field" style="margin-bottom:0">
+        <label>Tanggal</label>
+        <input id="edit-beli-tgl" type="date">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Keterangan</label>
+        <input id="edit-beli-ket" type="text">
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">Item Belanja</div>
+    <div id="edit-beli-items"></div>
+    <div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:12px;display:flex;justify-content:space-between">
+      <span style="font-size:13px;color:var(--muted)">Total Belanja</span>
+      <span style="font-size:18px;font-weight:700;color:var(--navy)" id="edit-beli-total">Rp 0</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button id="btn-simpan-edit-beli" class="btn btn-teal" style="flex:1">&#128190; Simpan Perubahan</button>
+      <button id="btn-batal-edit-beli" class="btn btn-outline">Batal</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Tambah Modal -->
 <div id="modal-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:14px;padding:24px;max-width:340px;width:100%">
@@ -468,6 +496,61 @@ tr:hover td{background:#f8fafc}
       <div id="tes-bayar-detail" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"></div>
     </div>
     <button id="btn-proses-tes" class="btn btn-yellow">&#128424;&#65039; Preview &amp; Cetak Nota</button>
+  </div>
+</div>
+
+<!-- MODAL EDIT BELANJA -->
+<div id="modal-edit-beli" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:#fff;border-radius:14px;padding:24px;max-width:520px;width:100%;margin:auto">
+    <h3 style="color:var(--navy);margin-bottom:16px">&#9998; Edit Belanja</h3>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field" style="margin-bottom:0"><label>Tanggal</label><input id="edit-beli-tgl" type="date"></div>
+      <div class="field" style="margin-bottom:0"><label>Keterangan</label><input id="edit-beli-ket" type="text"></div>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">Item Belanja</div>
+    <div id="edit-beli-items"></div>
+    <div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;color:var(--muted)">Total Baru</span>
+      <span style="font-size:18px;font-weight:700;color:var(--navy)" id="edit-beli-total">Rp 0</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button id="btn-simpan-edit-beli" class="btn btn-teal" style="flex:1">&#128190; Simpan Perubahan</button>
+      <button id="btn-batal-edit-beli" class="btn btn-outline">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIT TRANSAKSI -->
+<div id="modal-edit-trx" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:#fff;border-radius:14px;padding:24px;max-width:480px;width:100%;margin:auto">
+    <h3 style="color:var(--navy);margin-bottom:4px">&#9998; Edit Transaksi</h3>
+    <div id="edit-trx-id-label" style="font-size:11px;color:var(--muted);margin-bottom:16px"></div>
+
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field" style="margin-bottom:0">
+        <label>Tanggal</label>
+        <input id="edit-trx-tgl" type="date">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Nama Pembeli</label>
+        <input id="edit-trx-pembeli" type="text">
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">Item Transaksi</div>
+    <div id="edit-trx-items"></div>
+
+    <div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;color:var(--muted)">Total Baru</span>
+        <span style="font-size:18px;font-weight:700;color:var(--navy)" id="edit-trx-total">Rp 0</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button id="btn-simpan-edit-trx" class="btn btn-teal" style="flex:1">&#128190; Simpan Perubahan</button>
+      <button id="btn-batal-edit-trx" class="btn btn-outline">Batal</button>
+    </div>
   </div>
 </div>
 
@@ -997,7 +1080,6 @@ el("btn-simpan-belanja").addEventListener("click", async ()=>{
   }
 
   toast("Belanja disimpan & stok diperbarui!");
-  loadBelanja();
   resetBelanjaForm();
   loadStok();
 });
@@ -1583,8 +1665,9 @@ async function loadRekapData(){
       <td style="font-size:12px">${detail}</td>
       <td>${rp(dt.total)}</td>
       <td style="color:var(--green)">${rp(dt.untung)}</td>
-      <td style="display:flex;gap:4px">
+      <td style="display:flex;gap:4px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" data-cetak="${d.id}" title="Cetak">&#128424;</button>
+        <button class="btn btn-outline btn-sm" data-edit-trx="${d.id}" title="Edit" style="border-color:var(--teal);color:var(--teal)">&#9998;</button>
         <button class="btn btn-red btn-sm" data-hapus-trx="${d.id}" title="Hapus">&#128465;</button>
       </td>
     </tr>`;
@@ -1598,6 +1681,9 @@ async function loadRekapData(){
     : '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada transaksi</td></tr>';
   tbJual.querySelectorAll("[data-cetak]").forEach(btn=>{
     btn.addEventListener("click",()=>cetakUlang(btn.dataset.cetak));
+  });
+  tbJual.querySelectorAll("[data-edit-trx]").forEach(btn=>{
+    btn.addEventListener("click",()=>editTrx(btn.dataset.editTrx));
   });
   tbJual.querySelectorAll("[data-hapus-trx]").forEach(btn=>{
     btn.addEventListener("click",()=>hapusTrx(btn.dataset.hapusTrx));
@@ -1619,7 +1705,10 @@ async function loadRekapData(){
       <td style="font-size:12px">${esc(dt.keterangan||"-")}</td>
       <td style="font-size:12px">${itemStr}</td>
       <td>${rp(dt.total)}</td>
-      <td><button class="btn btn-red btn-sm" data-hapus-beli="${d.id}">&#128465;</button></td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-outline btn-sm" data-edit-beli="${d.id}" style="border-color:var(--teal);color:var(--teal)">&#9998;</button>
+        <button class="btn btn-red btn-sm" data-hapus-beli="${d.id}">&#128465;</button>
+      </td>
     </tr>`;
   });
   el("rek-beli-trx").textContent = docsFiltered.length;
@@ -1628,6 +1717,9 @@ async function loadRekapData(){
   tbBeli.innerHTML = rowsBeli.length
     ? rowsBeli.join("")
     : '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada pembelian</td></tr>';
+  tbBeli.querySelectorAll("[data-edit-beli]").forEach(btn=>{
+    btn.addEventListener("click",()=>editBelanja(btn.dataset.editBeli));
+  });
   tbBeli.querySelectorAll("[data-hapus-beli]").forEach(btn=>{
     btn.addEventListener("click",()=>hapusBelanja(btn.dataset.hapusBeli));
   });
@@ -1639,6 +1731,122 @@ async function cetakUlang(id){
   const dt=snap.data();
   tampilkanNota(dt.items,dt.total,id,false,dt.pembeli||"",dt.diskon||0,dt.subtotal||dt.total,dt.bayar||"TUNAI",dt.kembalian??null);
 }
+
+let editTrxData = null; // {id, items, originalItems}
+
+async function editTrx(id){
+  const snap = await getDoc(doc(db,C_TRX,id));
+  if(!snap.exists()){ toast("Data tidak ditemukan"); return; }
+  const dt = snap.data();
+
+  // Simpan state asli untuk kalkulasi diff stok
+  editTrxData = {
+    id,
+    originalItems: JSON.parse(JSON.stringify(dt.items||[])),
+    items: JSON.parse(JSON.stringify(dt.items||[]))
+  };
+
+  el("edit-trx-id-label").textContent = "No: " + id.slice(-8).toUpperCase() + " | " + (dt.waktu?.toDate().toLocaleDateString("id-ID")||"-");
+  el("edit-trx-tgl").value = dt.tgl || dt.waktu?.toDate().toISOString().split("T")[0] || "";
+  el("edit-trx-pembeli").value = dt.pembeli||"";
+
+  renderEditItems();
+  el("modal-edit-trx").style.display = "flex";
+}
+
+function renderEditItems(){
+  if(!editTrxData) return;
+  const wrap = el("edit-trx-items");
+  wrap.innerHTML = editTrxData.items.map((item,i) => `
+    <div style="display:flex;gap:6px;align-items:center;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:6px" data-eidx="${i}">
+      <div style="flex:2;font-size:13px;font-weight:500">${esc(item.nama)}<br><small style="color:var(--muted)">${item.tipe==="jasa"?"Layanan":"Obat"}</small></div>
+      <input type="number" class="edit-qty" value="${item.qty||1}" min="1"
+        style="width:50px;padding:5px;font-size:13px;border:1.5px solid var(--border);border-radius:6px;text-align:center">
+      <input type="number" class="edit-hjual" value="${item.harga_jual||0}" min="0"
+        style="width:85px;padding:5px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;text-align:right">
+      <button class="btn btn-red btn-sm del-edit-item" style="padding:4px 8px">&#10005;</button>
+    </div>`
+  ).join("");
+
+  // Wire
+  wrap.querySelectorAll("[data-eidx]").forEach(row => {
+    const i = parseInt(row.dataset.eidx);
+    row.querySelector(".edit-qty").addEventListener("input", function(){
+      editTrxData.items[i].qty = parseInt(this.value)||1;
+      hitungEditTotal();
+    });
+    row.querySelector(".edit-hjual").addEventListener("input", function(){
+      editTrxData.items[i].harga_jual = parseFloat(this.value)||0;
+      editTrxData.items[i].subtotal = editTrxData.items[i].harga_jual * editTrxData.items[i].qty;
+      hitungEditTotal();
+    });
+    row.querySelector(".del-edit-item").addEventListener("click", ()=>{
+      editTrxData.items.splice(i,1);
+      renderEditItems();
+    });
+  });
+  hitungEditTotal();
+}
+
+function hitungEditTotal(){
+  let total = 0;
+  (editTrxData?.items||[]).forEach(it=>{
+    total += (it.harga_jual||0) * (it.qty||1);
+  });
+  el("edit-trx-total").textContent = rp(total);
+}
+
+el("btn-batal-edit-trx").addEventListener("click",()=>{
+  el("modal-edit-trx").style.display="none";
+  editTrxData=null;
+});
+
+el("btn-simpan-edit-trx").addEventListener("click", async ()=>{
+  if(!editTrxData){ return; }
+  const {id, originalItems, items} = editTrxData;
+  const tgl = el("edit-trx-tgl").value;
+  const pembeli = el("edit-trx-pembeli").value.trim();
+
+  // Hitung diff stok: originalItems vs items baru
+  // Obat: jika qty berkurang → kembalikan ke stok; jika bertambah → kurangi dari stok
+  const obatMap = {};
+  originalItems.forEach(it=>{
+    if(it.tipe==="jasa") return;
+    obatMap[it.nama] = obatMap[it.nama] || 0;
+    obatMap[it.nama] -= (it.qty||1); // sudah keluar
+  });
+  items.forEach(it=>{
+    if(it.tipe==="jasa") return;
+    obatMap[it.nama] = obatMap[it.nama] || 0;
+    obatMap[it.nama] += (it.qty||1); // akan keluar
+  });
+  // Terapkan diff ke stok (negatif = kembalikan, positif = kurangi lagi)
+  for(const [nama, diff] of Object.entries(obatMap)){
+    if(diff===0) continue;
+    const obat = stokList.find(o=>o.nama===nama);
+    if(obat) await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(-diff)});
+  }
+
+  // Hitung total & untung baru
+  let total=0, untung=0;
+  items.forEach(it=>{
+    it.subtotal = (it.harga_jual||0)*(it.qty||1);
+    total += it.subtotal;
+    untung += (it.subtotal - (it.harga_beli||0)*(it.qty||1));
+  });
+
+  // Update Firestore
+  await updateDoc(doc(db,C_TRX,id),{
+    items, total, untung, tgl, pembeli,
+    updated: Timestamp.now()
+  });
+
+  toast("Transaksi diperbarui!");
+  el("modal-edit-trx").style.display="none";
+  editTrxData=null;
+  await loadStok();
+  loadRekapData();
+});
 
 async function hapusTrx(id){
   if(!confirm("Hapus transaksi ini? Stok akan dikembalikan.")) return;
@@ -2107,6 +2315,146 @@ async function hapusKeuangan(src,id){
   toast("Catatan dihapus");
   loadKeuData();
 }
+
+let editBeliData = null;
+
+async function editBelanja(id){
+  const snap = await getDoc(doc(db,C_BELI,id));
+  if(!snap.exists()){ toast("Data tidak ditemukan"); return; }
+  const dt = snap.data();
+
+  editBeliData = {
+    id,
+    originalItems: JSON.parse(JSON.stringify(dt.items||[])),
+    items: JSON.parse(JSON.stringify(dt.items||[]))
+  };
+
+  el("edit-beli-id-label").textContent = "Tanggal: " + (dt.tanggal||"-");
+  el("edit-beli-tgl").value = dt.tanggal||"";
+  el("edit-beli-ket").value = dt.keterangan||"";
+  renderEditBeliItems();
+  el("modal-edit-beli").style.display = "flex";
+}
+
+function renderEditBeliItems(){
+  if(!editBeliData) return;
+  const wrap = el("edit-beli-items");
+  const satuanList = ["STRIP","BOTOL","AMPUL"];
+  wrap.innerHTML = editBeliData.items.map((item,i) => {
+    const satuanOpts = satuanList.map(s=>`<option value="${s}" ${(item.satuan||"")===s?"selected":""}>${s}</option>`).join("");
+    return `<div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px" data-bidx="${i}">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <div style="flex:2;min-width:120px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:2px">Nama</div>
+          <input class="edit-beli-nama" value="${esc(item.nama||"")}"
+            style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px">
+        </div>
+        <div style="flex:0 0 80px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:2px">Satuan</div>
+          <select class="edit-beli-satuan" style="padding:5px 6px;font-size:12px">
+            <option value="">-</option>${satuanOpts}
+          </select>
+        </div>
+        <div style="flex:0 0 55px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:2px">Qty</div>
+          <input type="number" class="edit-beli-qty" value="${item.qty||1}" min="1"
+            style="width:55px;padding:5px;border:1.5px solid var(--border);border-radius:6px;text-align:center;font-size:13px">
+        </div>
+        <div style="flex:0 0 100px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:2px">H.Beli Total</div>
+          <input type="number" class="edit-beli-hbeli" value="${(item.harga_beli||0)*(item.qty||1)}"
+            style="width:100px;padding:5px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;text-align:right">
+        </div>
+        <button class="btn btn-red btn-sm del-edit-beli" style="padding:4px 8px;margin-top:14px">&#10005;</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  wrap.querySelectorAll("[data-bidx]").forEach(row => {
+    const i = parseInt(row.dataset.bidx);
+    row.querySelector(".edit-beli-nama").addEventListener("input",function(){
+      editBeliData.items[i].nama=this.value.toUpperCase();this.value=this.value.toUpperCase();
+    });
+    row.querySelector(".edit-beli-satuan").addEventListener("change",function(){
+      editBeliData.items[i].satuan=this.value;
+    });
+    row.querySelector(".edit-beli-qty").addEventListener("input",function(){
+      editBeliData.items[i].qty=parseInt(this.value)||1;
+      hitungEditBeliTotal();
+    });
+    row.querySelector(".edit-beli-hbeli").addEventListener("input",function(){
+      const total=parseFloat(this.value)||0;
+      const qty=editBeliData.items[i].qty||1;
+      editBeliData.items[i].harga_beli=Math.round(total/qty);
+      editBeliData.items[i].harga_jual=calcHargaJualBelanja(total,qty);
+      editBeliData.items[i].subtotal=total;
+      hitungEditBeliTotal();
+    });
+    row.querySelector(".del-edit-beli").addEventListener("click",()=>{
+      editBeliData.items.splice(i,1);
+      renderEditBeliItems();
+    });
+  });
+  hitungEditBeliTotal();
+}
+
+function hitungEditBeliTotal(){
+  let total=0;
+  (editBeliData?.items||[]).forEach(it=>{
+    total += (it.harga_beli||0)*(it.qty||1);
+  });
+  el("edit-beli-total").textContent=rp(total);
+}
+
+el("btn-batal-edit-beli").addEventListener("click",()=>{
+  el("modal-edit-beli").style.display="none";
+  editBeliData=null;
+});
+
+el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
+  if(!editBeliData) return;
+  const {id, originalItems, items} = editBeliData;
+  const tgl = el("edit-beli-tgl").value;
+  const ket = el("edit-beli-ket").value.trim();
+
+  // Hitung diff stok: kembalikan stok lama, kurangi stok baru
+  const stokMap = {};
+  originalItems.forEach(it=>{
+    stokMap[it.nama] = stokMap[it.nama]||0;
+    stokMap[it.nama] -= (it.qty||1); // stok lama dikembalikan
+  });
+  items.forEach(it=>{
+    stokMap[it.nama] = stokMap[it.nama]||0;
+    stokMap[it.nama] += (it.qty||1); // stok baru dikurangi
+  });
+  for(const [nama, diff] of Object.entries(stokMap)){
+    if(diff===0) continue;
+    const obat=stokList.find(o=>o.nama===nama);
+    if(obat) await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(diff)});
+  }
+
+  // Update harga_jual di stok sesuai item baru (hanya jika item masih ada)
+  for(const item of items){
+    const obat=stokList.find(o=>o.nama===item.nama);
+    if(obat && item.harga_jual>0){
+      await updateDoc(doc(db,C_OBAT,obat.id),{
+        harga_beli:item.harga_beli||obat.harga_beli,
+        harga_jual:item.harga_jual||obat.harga_jual
+      });
+    }
+  }
+
+  let total=0;
+  items.forEach(it=>{ total+=(it.harga_beli||0)*(it.qty||1); });
+
+  await updateDoc(doc(db,C_BELI,id),{items,total,tanggal:tgl,keterangan:ket,updated:Timestamp.now()});
+  toast("Belanja diperbarui!");
+  el("modal-edit-beli").style.display="none";
+  editBeliData=null;
+  await loadStok();
+  loadRekapData();
+});
+
 
 async function hapusBelanja(id){
   if(!confirm("Hapus belanja ini? Stok akan dikurangi kembali.")) return;
