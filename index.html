@@ -647,7 +647,35 @@ async function loadStok(){
   const snap=await getDocs(query(collection(db,C_OBAT),orderBy("nama")));
   stokList=snap.docs.map(d=>({id:d.id,...d.data()}));
   renderTblStok();
+  buildObatLookup();
   return stokList;
+}
+
+function buildObatLookup(){
+  window._obatLookup = {};
+  stokList.forEach(o=>{
+    const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
+    if(allBatches.length===0){
+      window._obatLookup[o.nama.toUpperCase()] = o.id+"::__all__::";
+      return;
+    }
+    const expGroups={};
+    allBatches.forEach(([batchId,b])=>{
+      const ek=b.exp||"";
+      if(!expGroups[ek]) expGroups[ek]={qty:0,firstBatchId:batchId,exp:b.exp||""};
+      expGroups[ek].qty+=b.qty||0;
+    });
+    const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
+    if(sorted.length===1&&!sorted[0][1].exp){
+      window._obatLookup[o.nama.toUpperCase()] = o.id+"::__all__::";
+      return;
+    }
+    sorted.forEach(([expKey,g])=>{
+      const expTxt=g.exp?" ("+g.exp+")":"";
+      const key=(o.nama+expTxt).toUpperCase();
+      window._obatLookup[key] = o.id+"::"+g.firstBatchId+"::"+expKey;
+    });
+  });
 }
 
 function getExpTerdekat(o){
@@ -675,8 +703,8 @@ function renderTblStok(){
   if(!stokList.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted)">Belum ada obat</td></tr>';return;}
   tb.innerHTML=stokList.map(o=>{
     const s=o.stok||0;
-    const cls=s<=0?"out":s<=10?"low":"ok";
-    const lbl=s<=0?"Habis":s<=10?"Menipis":"Aman";
+    const cls=s<=0?"out":s<4?"low":"ok";
+    const lbl=s<=0?"Habis":s<4?"Menipis":"Aman";
     const exp=getExpTerdekat(o);
     return `<tr>
       <td><strong>${esc(o.nama)}</strong></td>
@@ -1322,8 +1350,13 @@ function renderJasa(mode){
     let stripInfo="";
     if(strip){
       if(stokS<=0) stripInfo=`<small style="color:var(--red);font-weight:600">⛔ Strip habis!</small>`;
-      else if(stokS<=5) stripInfo=`<small style="color:var(--yellow);font-weight:600">⚠️ Strip: ${stokS}</small>`;
-      else stripInfo=`<small style="color:var(--muted)">Strip: ${stokS}</small>`;
+      else if(stokS<4) stripInfo=`<small style="color:var(--yellow);font-weight:600">⚠️ Strip: ${stokS}</small>`;
+      else stripInfo=`<small style="color:var(--muted)">✓ Strip: ${stokS}</small>`;
+    } else if(l && STRIP_MAP[l.nama.toUpperCase()]===undefined){
+      // Layanan yg memang tidak butuh strip (Cek Tensi)
+      stripInfo="";
+    } else {
+      stripInfo=`<small style="color:var(--muted)">—</small>`;
     }
     const harga=item.harga_override!=null?item.harga_override:(l?l.harga:0);
     const isOverride=item.harga_override!=null;
@@ -1540,11 +1573,12 @@ el("btn-proses-tes").addEventListener("click",()=>{
   const diskon=parseFloat(el("tes-diskon").value)||0;
   let subtotal=0;
   const detailObat=validObat.map(item=>{
-    const o=stokList.find(x=>x.id===item.id);
+    const o=getObatFromItem(item);
+    if(!o) return null;
     const hjual=hargaJualEfektif(item);
     const sub=hjual*item.qty;subtotal+=sub;
     return{tipe:"obat",nama:o.nama,satuan:o.satuan,qty:item.qty,harga_jual:hjual,subtotal:sub};
-  });
+  }).filter(Boolean);
   const detailJasa=validJasa.map(item=>{
     const l=layananList.find(x=>x.id===item.id);
     const hJasa=item.harga_override!=null?item.harga_override:(l.harga||0);
@@ -2075,7 +2109,7 @@ function getDashRange(){
 async function loadDashboard(){
   await loadStok();
   el("s-jenis").textContent=stokList.length;
-  const kurang=stokList.filter(o=>(o.stok||0)<=10);
+  const kurang=stokList.filter(o=>(o.stok||0)>0&&(o.stok||0)<4);
   el("s-rendah").textContent=kurang.length;
 
   const today=new Date();today.setHours(0,0,0,0);
@@ -2130,7 +2164,7 @@ async function loadDashboard(){
     ? kurang.map(o=>`<tr>
         <td><strong>${esc(o.nama)}</strong></td>
         <td>${esc(o.satuan||"-")}</td>
-        <td><span class="badge ${(o.stok||0)<=0?"out":"low"}">${o.stok||0}</span></td>
+        <td><span class="badge ${(o.stok||0)<=0?"out":(o.stok||0)<4?"low":"ok"}">${o.stok||0}</span></td>
         <td>${expBadge(getExpTerdekat(o))}</td>
       </tr>`).join("")
     : '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Semua stok aman &#10003;</td></tr>';
