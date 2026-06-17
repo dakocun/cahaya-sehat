@@ -259,7 +259,7 @@ tr:hover td{background:#f8fafc}
       <div id="jual-bayar-detail" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"></div>
     </div>
     <div style="display:flex;gap:10px">
-      <button id="btn-proses-jual" class="btn btn-teal" style="flex:1">&#9989; Simpan &amp; Cetak Nota</button>
+      <button id="btn-proses-jual" class="btn btn-teal">&#9989; Simpan &amp; Cetak Nota</button>
       <button id="btn-reset-jual" class="btn btn-outline">&#128260; Reset</button>
     </div>
   </div>
@@ -1246,7 +1246,7 @@ function renderItems(mode){
     })();
 
     return`<div class="item-row" data-idx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
-      <div style="flex:0 0 160px;min-width:0;position:relative">
+      <div style="flex:2;min-width:120px;position:relative">
         <input type="text" class="sel-obat-text" list="obat-dl-${i}"
           value="${selectedNama}"
           style="width:100%;padding:6px 8px;font-size:12px;border:1.5px solid var(--border);border-radius:8px"
