@@ -1187,16 +1187,12 @@ function renderItems(mode){
     ).join("");
     const o=getObatFromItem(item);
     const hjual=hargaJualEfektif(item);
-
-    let hjualRow="";
-    if(o){
-      hjualRow=`<div style="display:flex;align-items:center;gap:3px">
-        <span style="font-size:11px;color:var(--muted);flex-shrink:0">Rp</span>
-        <input type="number" class="hjual-input" value="${hjual}" min="0"
-          style="width:80px;padding:5px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600;text-align:right">
-        <span class="hjual-lbl" style="font-size:10px;color:var(--teal);flex-shrink:0">${item.harga_jual_override!=null?"✏️":""}</span>
-      </div>`;
-    }
+    let hjualRow=`<div style="display:flex;align-items:center;gap:3px">
+      <span style="font-size:11px;color:var(--muted)">Rp</span>
+      <input type="number" class="hjual-input" value="${hjual||""}" min="0"
+        style="width:80px;padding:5px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600;text-align:right">
+      <span class="hjual-lbl" style="font-size:10px;color:var(--teal)">${item.harga_jual_override!=null?"✏️":""}</span>
+    </div>`;
 
     const obatOpts = stokList.flatMap(o=>{
       const namaBersih = (o.nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
