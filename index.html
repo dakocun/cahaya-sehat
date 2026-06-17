@@ -745,7 +745,7 @@ el("btn-show-tambah-stok").addEventListener("click",()=>{
   card.style.display=card.style.display==="none"?"block":"none";
   // Isi datalist dari stok
   const dl=el("dl-stok-manual");
-  dl.innerHTML=stokList.map(o=>`<option value="${esc(o.nama)}">`).join("");
+  dl.innerHTML=stokList.map(o=>`<option value="${o.nama}">`).join("");
   if(card.style.display==="block") el("ms-nama").focus();
 });
 
@@ -939,7 +939,9 @@ function calcHargaJualBelanja(hargaBeliTotal, qty){
 
 function renderBelanjaItems(){
   const wrap=el("belanja-items-wrap"); if(!wrap) return;
-  const namaOpts = stokList.map(o=>`<option value="${esc(o.nama)}">`).join("");
+  // Datalist belanja: semua nama obat dari stok (stok 0 tetap muncul)
+  const allNamaObat = stokList.map(o=>o.nama);
+  const namaOpts = allNamaObat.map(n=>`<option value="${n}">`).join("");
   const satuanList = ["STRIP","BOTOL","AMPUL"];
 
   wrap.innerHTML = `<datalist id="dl-obat">${namaOpts}</datalist>` +
@@ -1201,10 +1203,11 @@ function renderItems(mode){
     const obatOpts = stokList.flatMap(o=>{
       const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
       if(allBatches.length===0){
-        if((o.stok||0)<=0) return []; // stok habis - sembunyikan dari dropdown
         const key = o.nama.trim().replace(/\s+/g,' ');
-        window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
-        return [`<option value="${key}" label="${key} — sisa: ${o.stok||0}"></option>`];
+        const habis = (o.stok||0)<=0;
+        if(!habis) window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
+        const lbl = habis ? key+" — HABIS" : key+" — sisa: "+(o.stok||0);
+        return [`<option value="${key}" label="${lbl}"></option>`];
       }
       const expGroups={};
       allBatches.forEach(([batchId,b])=>{
@@ -1214,18 +1217,21 @@ function renderItems(mode){
       });
       const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
       if(sorted.length===1 && !sorted[0][1].exp){
-        if((o.stok||0)<=0) return [];
+        const habis=(o.stok||0)<=0;
         const key = o.nama.trim().replace(/\s+/g,' ');
-        window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
-        return [`<option value="${key}" label="${key} — sisa: ${o.stok||0}"></option>`];
+        if(!habis) window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
+        const lbl = habis ? key+" — HABIS" : key+" — sisa: "+(o.stok||0);
+        return [`<option value="${key}" label="${lbl}"></option>`];
       }
-      return sorted.filter(([,g])=>g.qty>0).map(([expKey,g])=>{
+      return sorted.map(([expKey,g])=>{
         const expTxt = g.exp ? " ("+g.exp+")" : "";
         const key = o.nama + expTxt;
         const compositeVal = o.id+"::"+g.firstBatchId+"::"+expKey;
         window._obatLookup[key.toUpperCase()] = compositeVal;
         // Value = nama+exp (tampil di field), label = nama+exp+sisa (tampil di dropdown)
-        return `<option value="${key}" label="${key} — sisa: ${g.qty}"></option>`;
+        const lbl2 = g.qty>0 ? key+" — sisa: "+g.qty : key+" — HABIS";
+        if(g.qty<=0) { return `<option value="${key}" label="${lbl2}"></option>`; }
+        return `<option value="${key}" label="${lbl2}"></option>`;
       });
     }).join("");
 
