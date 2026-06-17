@@ -2929,14 +2929,27 @@ async function loadKeuData(){
   tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Memuat...</td></tr>';
 
   // Query semua data (filter by range nanti manual)
-  let qTrx, qKeu;
-  if(range){
-    qTrx=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(range.s)),where("waktu","<=",Timestamp.fromDate(range.e)),orderBy("waktu","asc"));
-    qKeu=query(collection(db,C_KEU),where("waktu",">=",Timestamp.fromDate(range.s)),where("waktu","<=",Timestamp.fromDate(range.e)),orderBy("waktu","asc"));
-  } else {
-    qTrx=query(collection(db,C_TRX),orderBy("waktu","asc"));
-    qKeu=query(collection(db,C_KEU),orderBy("waktu","asc"));
-  }
+  // Ambil semua dulu, filter manual by tgl
+  const qTrxAll = query(collection(db,C_TRX), orderBy("tgl","asc"));
+  const qKeuAll = query(collection(db,C_KEU), orderBy("tanggal","asc"));
+  const qBeliAll = query(collection(db,C_BELI), orderBy("tanggal","asc"));
+
+  const [snapTrxAll, snapBeliAll, snapKeuAll] = await Promise.all([
+    getDocs(qTrxAll),
+    getDocs(qBeliAll),
+    getDocs(qKeuAll)
+  ]);
+
+  // Filter by range
+  const filterByTgl = (tgl) => {
+    if(!range) return true;
+    return tgl >= range.s.toISOString().split("T")[0] 
+        && tgl <= range.e.toISOString().split("T")[0];
+  };
+
+  const snapTrx = { docs: snapTrxAll.docs.filter(d => filterByTgl(d.data().tgl || "")) };
+  const snapBeli = { docs: snapBeliAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
+  const snapKeu = { docs: snapKeuAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
 
   // Belanja: query semua dulu, filter manual by tanggal string
   const qBeliAll = query(collection(db,C_BELI),orderBy("tanggal","asc"));
