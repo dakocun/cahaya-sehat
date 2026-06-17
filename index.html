@@ -1147,15 +1147,47 @@ function hargaJualEfektif(item){
 function renderItems(mode){
   const items=mode==="jual"?jualItems:tesItems;
   const wrap=el(mode+"-wrap"); if(!wrap) return;
+  
+  // Build lookup dulu
+  window._obatLookup = {};
+  stokList.forEach(o=>{
+    const namaBersih = (o.nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
+    const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
+    
+    if(allBatches.length===0){
+      if((o.stok||0)<=0) return;
+      window._obatLookup[namaBersih] = o.id+"::__all__::";
+      return;
+    }
+    
+    const expGroups={};
+    allBatches.forEach(([batchId,b])=>{
+      const ek=b.exp||"";
+      if(!expGroups[ek]) expGroups[ek]={qty:0,firstBatchId:batchId,exp:b.exp||""};
+      expGroups[ek].qty+=b.qty||0;
+    });
+    
+    const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
+    
+    if(sorted.length===1&&!sorted[0][1].exp){
+      window._obatLookup[namaBersih] = o.id+"::__all__::";
+      return;
+    }
+    
+    sorted.forEach(([expKey,g])=>{
+      const expTxt=g.exp?" ("+g.exp+")":"";
+      const key=namaBersih + (g.exp ? " ("+g.exp+")" : "");
+      window._obatLookup[key.replace(/\s+/g,' ').toUpperCase()] = o.id+"::"+g.firstBatchId+"::"+expKey;
+    });
+  });
+  
   wrap.innerHTML=items.map((item,i)=>{
     const opts=stokList.map(o=>
       `<option value="${o.id}" ${o.id===item.id?"selected":""}>${esc(o.nama)} (${o.stok||0} ${esc(o.satuan||"")})</option>`
     ).join("");
     const o=getObatFromItem(item);
     const hjual=hargaJualEfektif(item);
-    const untung=o?((hjual-o.harga_beli)*item.qty):0;
 
-    // Baris harga jual (editable di mode jual)
     let hjualRow="";
     if(o){
       hjualRow=`<div style="display:flex;align-items:center;gap:3px">
@@ -1166,55 +1198,42 @@ function renderItems(mode){
       </div>`;
     }
 
-    // Build lookup map: label → compositeId
-    // datalist harus value=label (yang tampil di dropdown)
-    // compositeId disimpan di map lalu diambil saat match
-    window._obatLookup = window._obatLookup || {};
-    window._obatLookup = {}; // reset tiap render
-
     const obatOpts = stokList.flatMap(o=>{
+      const namaBersih = (o.nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
       const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
+      const habis = (o.stok||0)<=0;
+      
       if(allBatches.length===0){
-        const key = o.nama.trim().replace(/\s+/g,' ');
-        const habis = (o.stok||0)<=0;
-        if(!habis) window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
-        const lbl = habis ? key+" — HABIS" : key+" — sisa: "+(o.stok||0);
-        return [`<option value="${key}" label="${lbl}"></option>`];
+        const lbl = habis ? namaBersih+" — HABIS" : namaBersih+" — sisa: "+(o.stok||0);
+        return [`<option value="${namaBersih}" label="${lbl}"></option>`];
       }
+      
       const expGroups={};
       allBatches.forEach(([batchId,b])=>{
         const expKey=b.exp||"";
         if(!expGroups[expKey]) expGroups[expKey]={qty:0,firstBatchId:batchId,exp:b.exp||""};
         expGroups[expKey].qty+=b.qty||0;
       });
+      
       const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
-      if(sorted.length===1 && !sorted[0][1].exp){
-        const habis=(o.stok||0)<=0;
-        const key = o.nama.trim().replace(/\s+/g,' ');
-        if(!habis) window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
-        const lbl = habis ? key+" — HABIS" : key+" — sisa: "+(o.stok||0);
-        return [`<option value="${key}" label="${lbl}"></option>`];
-      }
+      
       return sorted.map(([expKey,g])=>{
         const expTxt = g.exp ? " ("+g.exp+")" : "";
-        const key = o.nama + expTxt;
+        const key = namaBersih + expTxt;
         const compositeVal = o.id+"::"+g.firstBatchId+"::"+expKey;
-        window._obatLookup[key.toUpperCase()] = compositeVal;
-        // Value = nama+exp (tampil di field), label = nama+exp+sisa (tampil di dropdown)
+        window._obatLookup[key.replace(/\s+/g,' ').toUpperCase()] = compositeVal;
         const lbl2 = g.qty>0 ? key+" — sisa: "+g.qty : key+" — HABIS";
-        if(g.qty<=0) { return `<option value="${key}" label="${lbl2}"></option>`; }
         return `<option value="${key}" label="${lbl2}"></option>`;
       });
     }).join("");
 
-    // Tampilan di input field - cukup nama + exp date saja
     const selectedNama = (()=>{
       if(!item.id) return "";
       const {obatId,expKey} = parseItemId(item.id);
       const ob = stokList.find(x=>x.id===obatId);
       if(!ob) return "";
-      const expTxt = expKey ? " ("+expKey+")" : "";
-      return ob.nama + expTxt;
+      const expTxt = expKey && expKey!=="__all__" ? " ("+expKey+")" : "";
+      return (ob.nama || "").trim().replace(/\s+/g, ' ') + expTxt;
     })();
 
     return`<div class="item-row" data-idx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
@@ -1233,24 +1252,23 @@ function renderItems(mode){
     </div>`;
   }).join("");
 
+  // Wire events
   wrap.querySelectorAll(".item-row").forEach(row=>{
     const i=+row.dataset.idx;
     const arr=mode==="jual"?jualItems:tesItems;
-
     const textInp = row.querySelector(".sel-obat-text");
     const hiddenInp = row.querySelector(".sel-obat-val");
 
-        const applyObatSelection = (typed) => {
+    const applyObatSelection = (typed) => {
       const key = typed.trim().replace(/\s+/g,' ').toUpperCase();
       const compositeId = (window._obatLookup||{})[key];
 
-      // Cek apakah obat ini ada tapi stoknya habis
       if(!compositeId){
         const isHabis = stokList.some(o=>
-          o.nama.trim().replace(/\s+/g,' ').toUpperCase()===key && (o.stok||0)<=0
+          (o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===key && (o.stok||0)<=0
         );
         if(isHabis){
-          toast("Stok "+typed.trim()+" habis, tidak bisa dipilih");
+          toast("Stok "+typed.trim()+" habis!");
           arr[i].id=""; hiddenInp.value="";
           const hjualInp=row.querySelector(".hjual-input");
           if(hjualInp) hjualInp.value="";
@@ -1263,7 +1281,6 @@ function renderItems(mode){
       const {obatId}=parseItemId(compositeId);
       const found2=stokList.find(x=>x.id===obatId);
       if(found2){
-        // Cek stok sekali lagi
         if((found2.stok||0)<=0){
           toast("Stok "+found2.nama+" habis!");
           arr[i].id=""; hiddenInp.value="";
@@ -1290,7 +1307,6 @@ function renderItems(mode){
       return false;
     };
 
-    // Trigger apply pada semua kemungkinan event datalist
     let applyTimer=null;
     const scheduleApply=(val)=>{
       clearTimeout(applyTimer);
@@ -1307,22 +1323,15 @@ function renderItems(mode){
       },200);
     });
     textInp.addEventListener("focus",function(){ this.select(); });
+    
     row.querySelector(".qty-input").addEventListener("input",function(){
       arr[i].qty=parseInt(this.value)||1;
       hitungTotalJual(mode);
-      // Update untung display
-      const o=stokList.find(x=>x.id===arr[i].id);
-      if(o && mode==="jual"){
-        const hjual=hargaJualEfektif(arr[i]);
-        const untungEl=row.querySelector('[style*="color:var(--green)"]');
-        if(untungEl) untungEl.textContent="Untung: "+rp((hjual-o.harga_beli)*arr[i].qty);
-      }
     });
     row.querySelector(".del-item").addEventListener("click",()=>{
       arr.splice(i,1);if(!arr.length)arr.push({id:"",qty:1});renderItems(mode);
     });
 
-    // Wire harga jual manual input (semua mode)
     const hjualInp=row.querySelector(".hjual-input");
     if(hjualInp){
       hjualInp.addEventListener("input",function(){
