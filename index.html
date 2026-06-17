@@ -1246,10 +1246,10 @@ function renderItems(mode){
     })();
 
     return`<div class="item-row" data-idx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
-      <div style="flex:1;min-width:0;position:relative">
+      <div style="flex:0 0 160px;min-width:0;position:relative">
         <input type="text" class="sel-obat-text" list="obat-dl-${i}"
           value="${selectedNama}"
-          style="width:100%;padding:7px 10px;font-size:13px;border:1.5px solid var(--border);border-radius:8px"
+          style="width:100%;padding:6px 8px;font-size:12px;border:1.5px solid var(--border);border-radius:8px"
           autocomplete="off">
         <datalist id="obat-dl-${i}">${obatOpts}</datalist>
         <input type="hidden" class="sel-obat-val" value="${item.id||""}">
@@ -1269,49 +1269,61 @@ function renderItems(mode){
     const hiddenInp = row.querySelector(".sel-obat-val");
 
         const applyObatSelection = (typed) => {
-      const compositeId = (window._obatLookup||{})[typed.trim().replace(/\s+/g,' ').toUpperCase()];
-      if(compositeId){
-        const {obatId,batchId,expKey}=parseItemId(compositeId);
-        const found2=stokList.find(x=>x.id===obatId);
-        if(found2){
-          hiddenInp.value=compositeId;
-          const dupIdx=arr.findIndex((it,idx2)=>idx2!==i&&it.id===compositeId);
-          if(dupIdx!==-1){
-            arr[dupIdx].qty+=arr[i].qty||1;
-            arr.splice(i,1);
-            renderItems(mode);
-          } else {
-            arr[i].id=compositeId;
-            arr[i].harga_jual_override=null;
-            const hjualInp=row.querySelector(".hjual-input");
-            if(hjualInp) hjualInp.value=found2.harga_jual||0;
-            hitungTotalJual(mode);
-            const lbl=row.querySelector(".hjual-lbl");
-            if(lbl) lbl.textContent="Rp";
-          }
-          return true;
+      const key = typed.trim().replace(/\s+/g,' ').toUpperCase();
+      const compositeId = (window._obatLookup||{})[key];
+
+      // Cek apakah obat ini ada tapi stoknya habis
+      if(!compositeId){
+        const isHabis = stokList.some(o=>
+          o.nama.trim().replace(/\s+/g,' ').toUpperCase()===key && (o.stok||0)<=0
+        );
+        if(isHabis){
+          toast("Stok "+typed.trim()+" habis, tidak bisa dipilih");
+          arr[i].id=""; hiddenInp.value="";
+          const hjualInp=row.querySelector(".hjual-input");
+          if(hjualInp) hjualInp.value="";
+          hitungTotalJual(mode);
+          return false;
         }
+        return false;
+      }
+
+      const {obatId}=parseItemId(compositeId);
+      const found2=stokList.find(x=>x.id===obatId);
+      if(found2){
+        // Cek stok sekali lagi
+        if((found2.stok||0)<=0){
+          toast("Stok "+found2.nama+" habis!");
+          arr[i].id=""; hiddenInp.value="";
+          hitungTotalJual(mode);
+          return false;
+        }
+        hiddenInp.value=compositeId;
+        const dupIdx=arr.findIndex((it,idx2)=>idx2!==i&&it.id===compositeId);
+        if(dupIdx!==-1){
+          arr[dupIdx].qty+=arr[i].qty||1;
+          arr.splice(i,1);
+          renderItems(mode);
+        } else {
+          arr[i].id=compositeId;
+          arr[i].harga_jual_override=null;
+          const hjualInp=row.querySelector(".hjual-input");
+          if(hjualInp) hjualInp.value=found2.harga_jual||0;
+          hitungTotalJual(mode);
+          const lbl=row.querySelector(".hjual-lbl");
+          if(lbl) lbl.textContent="";
+        }
+        return true;
       }
       return false;
     };
 
     // Trigger apply pada semua kemungkinan event datalist
     let applyTimer=null;
-    function scheduleApply(val){
+    const scheduleApply=(val)=>{
       clearTimeout(applyTimer);
-      applyTimer=setTimeout(()=>{
-        if(!applyObatSelection(val)){
-          // Coba match nama saja (tanpa exp)
-          const plainKey=val.trim().toUpperCase();
-          const found=stokList.find(o=>o.nama.trim().toUpperCase()===plainKey);
-          if(found){
-            const cid=found.id+"::__all__::";
-            window._obatLookup[plainKey]=cid;
-            applyObatSelection(val);
-          }
-        }
-      },50);
-    }
+      applyTimer=setTimeout(()=>{ applyObatSelection(val); },30);
+    };
     textInp.addEventListener("input",function(){ scheduleApply(this.value); });
     textInp.addEventListener("change",function(){ scheduleApply(this.value); });
     textInp.addEventListener("blur",function(){
