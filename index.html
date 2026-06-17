@@ -2892,6 +2892,337 @@ document.getElementById("btn-excel-rekap")?.addEventListener("click", downloadEx
 document.getElementById("btn-excel-keu")?.addEventListener("click", downloadExcelKeu);
 wireBayarBtns("jual");
 wireBayarBtns("tes");
+
+// ══════════════════════════════════════════════════════════
+// PERBAIKAN 1: Reset Stok dari Riwayat Belanja
+// ══════════════════════════════════════════════════════════
+async function resetStokDariBelanja(){
+  if(!confirm("⚠️ INI AKAN MENGHAPUS SEMUA DATA STOK dan membangun ulang dari riwayat belanja.\n\nStok akan dihitung dari semua item belanja yang pernah dicatat.\nLanjutkan?")) return;
+  
+  toast("⏳ Menghapus semua stok...");
+  
+  // 1. Hapus semua dokumen di koleksi obat
+  const snapObat = await getDocs(collection(db, C_OBAT));
+  const deletePromises = snapObat.docs.map(d => deleteDoc(doc(db, C_OBAT, d.id)));
+  await Promise.all(deletePromises);
+  
+  toast("⏳ Membangun ulang stok dari riwayat belanja...");
+  
+  // 2. Ambil semua riwayat belanja
+  const snapBeli = await getDocs(collection(db, C_BELI));
+  
+  if(snapBeli.empty){
+    toast("⚠️ Tidak ada riwayat belanja. Stok kosong.");
+    await loadStok();
+    return;
+  }
+  
+  // 3. Kumpulkan semua item belanja
+  const stokMap = {}; // key: nama_obat_bersih, value: { nama, satuan, harga_beli, harga_jual, stok, batches }
+  
+  snapBeli.docs.forEach(d => {
+    const dt = d.data();
+    const items = dt.items || [];
+    items.forEach(item => {
+      const nama = (item.nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
+      if(!nama) return;
+      
+      if(!stokMap[nama]){
+        stokMap[nama] = {
+          nama: nama,
+          satuan: (item.satuan || "").toUpperCase(),
+          harga_beli: item.harga_beli || 0,
+          harga_jual: item.harga_jual || 0,
+          stok: 0,
+          batches: {}
+        };
+      }
+      
+      // Update harga & satuan dari data terbaru (kalau ada)
+      if(item.harga_beli > 0) stokMap[nama].harga_beli = item.harga_beli;
+      if(item.harga_jual > 0) stokMap[nama].harga_jual = item.harga_jual;
+      if(item.satuan) stokMap[nama].satuan = item.satuan.toUpperCase();
+      
+      // Tambah stok
+      stokMap[nama].stok += (item.qty || 0);
+      
+      // Buat batch dari setiap item belanja (pakai ID belanja + random)
+      const batchId = "rst_" + d.id.slice(-6) + "_" + Math.random().toString(36).slice(2,6);
+      stokMap[nama].batches[batchId] = {
+        exp: item.exp || "",
+        qty: item.qty || 0,
+        harga_beli: item.harga_beli || 0,
+        sumber: "reset_belanja"
+      };
+    });
+  });
+  
+  // 4. Simpan ke Firestore
+  let count = 0;
+  for(const [nama, data] of Object.entries(stokMap)){
+    const docId = nama.replace(/\s+/g, "_").toLowerCase();
+    await setDoc(doc(db, C_OBAT, docId), {
+      ...data,
+      created: Timestamp.now(),
+      updated: Timestamp.now()
+    });
+    count++;
+  }
+  
+  toast(`✅ Stok berhasil dibangun ulang! ${count} obat dipulihkan dari riwayat belanja.`);
+  await loadStok();
+  loadDashboard();
+}
+
+
+// ══════════════════════════════════════════════════════════
+// PERBAIKAN 2: Bersihkan Duplikat Stok
+// ══════════════════════════════════════════════════════════
+async function bersihkanDuplikatStok(){
+  if(!confirm("🔍 Cari & gabungkan obat duplikat (nama mirip)?\n\nStok dan batch akan digabungkan, dokumen duplikat akan dihapus.")) return;
+  
+  toast("⏳ Mencari duplikat...");
+  const snap = await getDocs(collection(db, C_OBAT));
+  const seen = {}; // key: nama_bersih, value: DocumentReference
+  let removed = 0;
+  
+  for(const d of snap.docs){
+    const nama = (d.data().nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
+    if(!nama) continue;
+    
+    if(seen[nama]){
+      // Duplikat ditemukan - gabungkan ke dokumen pertama
+      const firstRef = seen[nama];
+      const firstSnap = await getDoc(firstRef);
+      const firstData = firstSnap.data();
+      const dupData = d.data();
+      
+      const totalStok = (firstData.stok||0) + (dupData.stok||0);
+      const gabungBatches = {
+        ...(firstData.batches||{}),
+        ...(dupData.batches||{})
+      };
+      
+      await updateDoc(firstRef, { 
+        stok: totalStok, 
+        batches: gabungBatches,
+        harga_beli: dupData.harga_beli || firstData.harga_beli || 0,
+        harga_jual: dupData.harga_jual || firstData.harga_jual || 0,
+        satuan: firstData.satuan || dupData.satuan || "",
+        updated: Timestamp.now()
+      });
+      
+      await deleteDoc(doc(db, C_OBAT, d.id));
+      removed++;
+    } else {
+      seen[nama] = doc(db, C_OBAT, d.id);
+    }
+  }
+  
+  toast(`✅ ${removed} duplikat dihapus & digabungkan!`);
+  await loadStok();
+}
+
+
+// ══════════════════════════════════════════════════════════
+// PERBAIKAN 3: Normalisasi buildObatLookup (anti-duplikat)
+// ══════════════════════════════════════════════════════════
+function buildObatLookup(){
+  window._obatLookup = {};
+  stokList.forEach(o=>{
+    const namaBersih = (o.nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
+    const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
+    
+    if(allBatches.length===0){
+      if((o.stok||0)<=0) return;
+      window._obatLookup[namaBersih] = o.id+"::__all__::";
+      return;
+    }
+    
+    const expGroups={};
+    allBatches.forEach(([batchId,b])=>{
+      const ek=b.exp||"";
+      if(!expGroups[ek]) expGroups[ek]={qty:0,firstBatchId:batchId,exp:b.exp||""};
+      expGroups[ek].qty+=b.qty||0;
+    });
+    
+    const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
+    
+    if(sorted.length===1&&!sorted[0][1].exp){
+      window._obatLookup[namaBersih] = o.id+"::__all__::";
+      return;
+    }
+    
+    sorted.forEach(([expKey,g])=>{
+      const expTxt=g.exp?" ("+g.exp+")":"";
+      const key=namaBersih + (g.exp ? " ("+g.exp+")" : "");
+      window._obatLookup[key.replace(/\s+/g,' ').toUpperCase()] = o.id+"::"+g.firstBatchId+"::"+expKey;
+    });
+  });
+}
+
+
+// ══════════════════════════════════════════════════════════
+// PERBAIKAN 4: Keuangan filter by TANGGAL (bukan Timestamp)
+// ══════════════════════════════════════════════════════════
+async function loadKeuData(){
+  const range=getKeuRange();
+  const tb=el("tb-keuangan");
+  tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Memuat...</td></tr>';
+
+  // Query semua data (filter by range nanti manual)
+  let qTrx, qKeu;
+  if(range){
+    qTrx=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(range.s)),where("waktu","<=",Timestamp.fromDate(range.e)),orderBy("waktu","asc"));
+    qKeu=query(collection(db,C_KEU),where("waktu",">=",Timestamp.fromDate(range.s)),where("waktu","<=",Timestamp.fromDate(range.e)),orderBy("waktu","asc"));
+  } else {
+    qTrx=query(collection(db,C_TRX),orderBy("waktu","asc"));
+    qKeu=query(collection(db,C_KEU),orderBy("waktu","asc"));
+  }
+
+  // Belanja: query semua dulu, filter manual by tanggal string
+  const qBeliAll = query(collection(db,C_BELI),orderBy("tanggal","asc"));
+
+  const [snapTrx,snapBeliAll,snapKeu] = await Promise.all([
+    getDocs(qTrx),
+    getDocs(qBeliAll),
+    getDocs(qKeu)
+  ]);
+
+  // Filter belanja by tanggal string dalam range
+  const snapBeli = {
+    docs: range 
+      ? snapBeliAll.docs.filter(d => {
+          const tgl = d.data().tanggal || "";
+          return tgl >= range.s.toISOString().split("T")[0] 
+              && tgl <= range.e.toISOString().split("T")[0];
+        })
+      : snapBeliAll.docs
+  };
+
+  // Gabung semua jadi 1 array & sort by tanggal/waktu
+  const rows=[];
+
+  snapTrx.docs.forEach(d=>{
+    const dt=d.data();
+    const tglStr=dt.tgl||dt.waktu?.toDate().toISOString().split("T")[0]||"-";
+    const isPrib=(dt.bayar||"")==="PRIBADI";
+    rows.push({
+      id:d.id, src:"trx", tgl:tglStr,
+      waktuSort:dt.waktu?.toDate()||new Date(tglStr),
+      jenis:"Penjualan", nota:d.id.slice(-8).toUpperCase(),
+      masuk:isPrib?0:(dt.total||0), keluar:0,
+      ket:dt.pembeli||(isPrib?"KONSUMSI PRIBADI":""),
+      raw:dt
+    });
+  });
+
+  snapBeli.docs.forEach(d=>{
+    const dt=d.data();
+    rows.push({
+      id:d.id, src:"beli", tgl:dt.tanggal||"-",
+      waktuSort:dt.created?.toDate()||new Date(dt.tanggal||""),
+      jenis:"Belanja", nota:"-",
+      masuk:0, keluar:dt.total||0,
+      ket:dt.keterangan||"", raw:dt
+    });
+  });
+
+  snapKeu.docs.forEach(d=>{
+    const dt=d.data();
+    rows.push({
+      id:d.id, src:"keu", tgl:dt.tanggal||"-",
+      waktuSort:dt.waktu?.toDate()||new Date(dt.tanggal||""),
+      jenis:dt.tipe==="modal"?"Tambah Modal":"Tarik Saldo",
+      nota:"-",
+      masuk:dt.tipe==="modal"?dt.jumlah:0,
+      keluar:dt.tipe==="tarik"?dt.jumlah:0,
+      ket:dt.keterangan||"", raw:dt
+    });
+  });
+
+  // Sort by waktu
+  rows.sort((a,b)=>a.waktuSort-b.waktuSort);
+
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Belum ada data</td></tr>';
+    el("keu-masuk").textContent=rp(0);
+    el("keu-keluar").textContent=rp(0);
+    el("keu-saldo").textContent=rp(0);
+    return;
+  }
+
+  let totalMasuk=0,totalKeluar=0;
+  tb.innerHTML=rows.map((row,i)=>{
+    totalMasuk+=row.masuk;totalKeluar+=row.keluar;
+    const masukCell=row.masuk>0?`<span style="color:var(--teal);font-weight:600">${rp(row.masuk)}</span>`:`<span style="color:var(--muted)">-</span>`;
+    const keluarCell=row.keluar>0?`<span style="color:var(--red);font-weight:600">${rp(row.keluar)}</span>`:`<span style="color:var(--muted)">-</span>`;
+    const jenisColor=row.jenis==="Penjualan"?"color:var(--teal)":row.jenis==="Belanja"?"color:var(--red)":row.jenis==="Tambah Modal"?"color:var(--green)":"color:var(--yellow)";
+    const hapusBtn=row.src==="keu"
+      ?`<button class="btn btn-red btn-sm" data-hapus-keu="${row.id}" title="Hapus">&#128465;</button>`
+      :`<span style="font-size:10px;color:var(--muted)">otomatis</span>`;
+    return`<tr>
+      <td style="font-size:12px;color:var(--muted)">${i+1}</td>
+      <td style="font-size:12px">${row.tgl}</td>
+      <td style="font-size:12px;font-weight:600;${jenisColor}">${row.jenis}</td>
+      <td style="font-size:11px;color:var(--muted)">${row.nota}${row.ket?` <span style="color:var(--text)">${esc(row.ket)}</span>`:""}</td>
+      <td style="text-align:right">${masukCell}</td>
+      <td style="text-align:right">${keluarCell}</td>
+      <td>${hapusBtn}</td>
+    </tr>`;
+  }).join("");
+
+  const saldo=totalMasuk-totalKeluar;
+  el("keu-masuk").textContent=rp(totalMasuk);
+  el("keu-keluar").textContent=rp(totalKeluar);
+  el("keu-saldo").textContent=rp(saldo);
+  el("keu-saldo-stat").style.background=saldo>=0?"#dcfce7":"#fee2e2";
+  el("keu-saldo-stat").querySelector(".val").style.color=saldo>=0?"var(--green)":"var(--red)";
+
+  // Wire hapus - hanya modal & tarik
+  tb.querySelectorAll("[data-hapus-keu]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      hapusKeuangan("keu", btn.dataset.hapusKeu);
+    });
+  });
+}
+
+
+// ══════════════════════════════════════════════════════════
+// BONUS: Tambah tombol Reset Stok & Bersihkan Duplikat
+// ══════════════════════════════════════════════════════════
+document.addEventListener("DOMContentLoaded", ()=>{
+  // Tambah tombol di halaman Stok
+  const containerStok = document.querySelector("#page-stok .card:last-child > div:first-child");
+  if(containerStok){
+    const btnReset = document.createElement("button");
+    btnReset.id = "btn-reset-stok";
+    btnReset.className = "btn btn-red btn-sm";
+    btnReset.style.marginLeft = "8px";
+    btnReset.innerHTML = "🔄 Reset Stok";
+    btnReset.title = "Hapus semua stok & bangun ulang dari riwayat belanja";
+    btnReset.addEventListener("click", resetStokDariBelanja);
+    
+    const btnBersihkan = document.createElement("button");
+    btnBersihkan.id = "btn-bersihkan-stok";
+    btnBersihkan.className = "btn btn-yellow btn-sm";
+    btnBersihkan.style.marginLeft = "4px";
+    btnBersihkan.innerHTML = "🔍 Bersihkan Duplikat";
+    btnBersihkan.title = "Gabungkan obat dengan nama mirip";
+    btnBersihkan.addEventListener("click", bersihkanDuplikatStok);
+    
+    containerStok.appendChild(btnReset);
+    containerStok.appendChild(btnBersihkan);
+  }
+  
+  // Override buildObatLookup dengan versi normalisasi
+  // (sudah di-override di atas, tapi pastikan dipakai)
+  console.log("✅ Perbaikan stok & keuangan aktif");
+  console.log("   - buildObatLookup() dinormalisasi (anti-duplikat)");
+  console.log("   - loadKeuData() filter by tanggal (bukan timestamp)");
+  console.log("   - Tombol Reset Stok & Bersihkan Duplikat tersedia di halaman Stok");
+});
+  
 </script>
 
 <!-- PASSWORD OVERLAY -->
