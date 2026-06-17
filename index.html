@@ -2689,7 +2689,7 @@ async function downloadExcelKeu(){
 
   snapTrx.docs.forEach(d=>{
     const dt=d.data();
-    const tgl=dt.tgl||dt.waktu?.toDate().toISOString().split("T")[0]||"-";
+    const tgl = dt.tgl || dt.tanggal || dt.waktu?.toDate().toISOString().split("T")[0] || "-";
     const isPrib=(dt.bayar||"")==="PRIBADI";
     allRows.push({sort:dt.waktu?.toDate()||new Date(tgl),tgl,jenis:"Penjualan",nota:d.id.slice(-8).toUpperCase()+(dt.pembeli?" - "+dt.pembeli:""),masuk:isPrib?0:(dt.total||0),keluar:0});
   });
@@ -2947,7 +2947,7 @@ async function loadKeuData(){
         && tgl <= range.e.toISOString().split("T")[0];
   };
 
-  const snapTrx = { docs: snapTrxAll.docs.filter(d => filterByTgl(d.data().tgl || "")) };
+  const snapTrx = { docs: snapTrxAll.docs.filter(d => filterByTgl(d.data().tgl || d.data().tanggal || "")) };
   const snapBeli = { docs: snapBeliAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
   const snapKeu = { docs: snapKeuAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
 
@@ -2956,7 +2956,7 @@ async function loadKeuData(){
 
   snapTrx.docs.forEach(d=>{
     const dt=d.data();
-    const tglStr=dt.tgl||dt.waktu?.toDate().toISOString().split("T")[0]||"-";
+    const tglStr = dt.tgl || dt.tanggal || dt.waktu?.toDate().toISOString().split("T")[0] || "-";
     const isPrib=(dt.bayar||"")==="PRIBADI";
     rows.push({
       id:d.id, src:"trx", tgl:tglStr,
