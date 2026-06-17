@@ -2951,17 +2951,6 @@ async function loadKeuData(){
   const snapBeli = { docs: snapBeliAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
   const snapKeu = { docs: snapKeuAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
 
-  // Filter belanja by tanggal string dalam range
-  const snapBeli = {
-    docs: range 
-      ? snapBeliAll.docs.filter(d => {
-          const tgl = d.data().tanggal || "";
-          return tgl >= range.s.toISOString().split("T")[0] 
-              && tgl <= range.e.toISOString().split("T")[0];
-        })
-      : snapBeliAll.docs
-  };
-
   // Gabung semua jadi 1 array & sort by tanggal/waktu
   const rows=[];
 
