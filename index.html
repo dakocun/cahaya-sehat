@@ -1817,23 +1817,31 @@ async function loadRekap(){
     el("rekap-bulan-sel").value=rekapBulan;
     el("rekap-tahun-sel").value=rekapTahun;
 
-    document.querySelectorAll(".rekap-period").forEach(btn=>{
-      btn.addEventListener("click",()=>{
-        rekapPeriod=btn.dataset.period;
-        document.querySelectorAll(".rekap-period").forEach(b=>b.className="btn btn-outline btn-sm rekap-period");
-        btn.className="btn btn-navy btn-sm rekap-period active-period";
-        const picker=el("rekap-bulan-picker");
-        if(rekapPeriod==="pilih"){
-          picker.style.display="flex";
-          el("rekap-bulan-sel").value=rekapBulan;
-          el("rekap-tahun-sel").value=rekapTahun;
-          loadRekapData();
-        } else {
-          picker.style.display="none";
-          loadRekapData();
-        }
-      });
+document.querySelectorAll(".rekap-period").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    rekapPeriod = btn.dataset.period;
+    
+    document.querySelectorAll(".rekap-period").forEach(b => {
+      b.className = "btn btn-outline btn-sm rekap-period";
     });
+    btn.className = "btn btn-navy btn-sm rekap-period active-period";
+    
+    const picker = el("rekap-bulan-picker");
+    if(rekapPeriod === "pilih"){
+      picker.style.display = "flex";
+      el("rekap-bulan-sel").value = rekapBulan;
+      el("rekap-tahun-sel").value = rekapTahun;
+    } else if(rekapPeriod === "bulan"){
+      picker.style.display = "none";
+      rekapBulan = new Date().getMonth();
+      rekapTahun = new Date().getFullYear();
+    } else {
+      picker.style.display = "none";
+    }
+    
+    loadRekapData(); // <-- PANGGIL INI
+  });
+});
 
     el("rekap-bulan-sel").addEventListener("change",()=>{
       rekapBulan=parseInt(el("rekap-bulan-sel").value);
@@ -2751,6 +2759,34 @@ document.getElementById("btn-excel-keu")?.addEventListener("click", downloadExce
 wireBayarBtns("jual");
 wireBayarBtns("tes");
 
+function filterTblStok(keyword){
+  const tb = el("tb-stok");
+  if(!tb) return;
+  
+  const rows = tb.querySelectorAll("tr");
+  let found = 0;
+  rows.forEach(row => {
+    const namaCell = row.querySelector("td:first-child strong");
+    if(!namaCell) return;
+    const nama = namaCell.textContent.toUpperCase();
+    const match = nama.includes(keyword);
+    row.style.display = match ? "" : "none";
+    if(match) found++;
+  });
+  
+  // Update info hasil pencarian (opsional)
+  const existingInfo = document.getElementById("stok-search-info");
+  if(existingInfo) existingInfo.remove();
+  
+  if(keyword && found === 0){
+    const info = document.createElement("div");
+    info.id = "stok-search-info";
+    info.style.cssText = "text-align:center;color:var(--muted);font-size:12px;padding:8px";
+    info.textContent = "Tidak ada obat dengan nama \"" + keyword + "\"";
+    tb.parentNode.appendChild(info);
+  }
+}
+
 // ══════════════════════════════════════════════════════════
 // PERBAIKAN 1: Reset Stok dari Riwayat Belanja
 // ══════════════════════════════════════════════════════════
@@ -3064,6 +3100,31 @@ document.addEventListener("DOMContentLoaded", ()=>{
     
     containerStok.appendChild(btnReset);
     containerStok.appendChild(btnBersihkan);
+
+        // ── Search Stok ──────────────────────────────
+    const searchWrap = document.createElement("div");
+    searchWrap.style.cssText = "display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap";
+    searchWrap.innerHTML = `
+      <input id="stok-search" type="text" placeholder="🔍 Cari nama obat..." 
+        style="flex:1;max-width:280px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px">
+      <button id="btn-clear-search" class="btn btn-outline btn-sm" style="display:none">✕ Clear</button>
+    `;
+    containerStok.parentNode.insertBefore(searchWrap, containerStok.nextSibling);
+    
+    const searchInput = searchWrap.querySelector("#stok-search");
+    const clearBtn = searchWrap.querySelector("#btn-clear-search");
+    
+    searchInput.addEventListener("input", function(){
+      const keyword = this.value.trim().toUpperCase();
+      clearBtn.style.display = keyword ? "inline-flex" : "none";
+      filterTblStok(keyword);
+    });
+    
+    clearBtn.addEventListener("click", ()=>{
+      searchInput.value = "";
+      clearBtn.style.display = "none";
+      filterTblStok("");
+    });
   }
   
   // Override buildObatLookup dengan versi normalisasi
