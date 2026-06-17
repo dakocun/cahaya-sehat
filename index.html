@@ -656,6 +656,7 @@ function buildObatLookup(){
   stokList.forEach(o=>{
     const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
     if(allBatches.length===0){
+      if((o.stok||0)<=0) return;
       window._obatLookup[o.nama.trim().replace(/\s+/g,' ').toUpperCase()] = o.id+"::__all__::";
       return;
     }
@@ -1200,12 +1201,10 @@ function renderItems(mode){
     const obatOpts = stokList.flatMap(o=>{
       const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
       if(allBatches.length===0){
-        // Key lookup = nama saja
-        const key = o.nama;
+        if((o.stok||0)<=0) return []; // stok habis - sembunyikan dari dropdown
+        const key = o.nama.trim().replace(/\s+/g,' ');
         window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
-        // Value option = nama saja (yang tampil di field saat dipilih)
-        // Label option = nama + sisa stok (yang tampil di dropdown)
-        return [`<option value="${o.nama}" label="${o.nama} — sisa: ${o.stok||0}"></option>`];
+        return [`<option value="${key}" label="${key} — sisa: ${o.stok||0}"></option>`];
       }
       const expGroups={};
       allBatches.forEach(([batchId,b])=>{
@@ -1215,11 +1214,12 @@ function renderItems(mode){
       });
       const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
       if(sorted.length===1 && !sorted[0][1].exp){
-        const key = o.nama;
+        if((o.stok||0)<=0) return [];
+        const key = o.nama.trim().replace(/\s+/g,' ');
         window._obatLookup[key.toUpperCase()] = o.id+"::__all__::";
-        return [`<option value="${o.nama}" label="${o.nama} — sisa: ${o.stok||0}"></option>`];
+        return [`<option value="${key}" label="${key} — sisa: ${o.stok||0}"></option>`];
       }
-      return sorted.map(([expKey,g])=>{
+      return sorted.filter(([,g])=>g.qty>0).map(([expKey,g])=>{
         const expTxt = g.exp ? " ("+g.exp+")" : "";
         const key = o.nama + expTxt;
         const compositeVal = o.id+"::"+g.firstBatchId+"::"+expKey;
@@ -1289,17 +1289,32 @@ function renderItems(mode){
       return false;
     };
 
-    textInp.addEventListener("input",function(){
-      applyObatSelection(this.value);
-    });
-    textInp.addEventListener("change",function(){
-      if(!applyObatSelection(this.value)){
-        // Tidak match - kosongkan
-        hiddenInp.value="";
-        arr[i].id="";
-        arr[i].harga_jual_override=null;
-        hitungTotalJual(mode);
-      }
+    // Trigger apply pada semua kemungkinan event datalist
+    let applyTimer=null;
+    function scheduleApply(val){
+      clearTimeout(applyTimer);
+      applyTimer=setTimeout(()=>{
+        if(!applyObatSelection(val)){
+          // Coba match nama saja (tanpa exp)
+          const plainKey=val.trim().toUpperCase();
+          const found=stokList.find(o=>o.nama.trim().toUpperCase()===plainKey);
+          if(found){
+            const cid=found.id+"::__all__::";
+            window._obatLookup[plainKey]=cid;
+            applyObatSelection(val);
+          }
+        }
+      },50);
+    }
+    textInp.addEventListener("input",function(){ scheduleApply(this.value); });
+    textInp.addEventListener("change",function(){ scheduleApply(this.value); });
+    textInp.addEventListener("blur",function(){
+      scheduleApply(this.value);
+      setTimeout(()=>{
+        if(!arr[i].id && this.value){
+          this.value=""; hitungTotalJual(mode);
+        }
+      },200);
     });
     textInp.addEventListener("focus",function(){ this.select(); });
     row.querySelector(".qty-input").addEventListener("input",function(){
@@ -1495,9 +1510,11 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
     const o=stokList.find(x=>x.id===obatId);
     if(!o){toast("Obat tidak ditemukan");return;}
     if(batchId==="__all__"){
+      if((o.stok||0)<=0){toast("Stok "+o.nama+" habis!");return;}
       if((o.stok||0)<item.qty){toast("Stok "+o.nama+" tidak cukup (sisa: "+(o.stok||0)+")");return;}
     } else {
       const bQty=(o.batches?.[batchId]?.qty)||0;
+      if(bQty<=0){toast("Stok batch ini habis!");return;}
       if(bQty<item.qty){toast("Stok batch "+o.nama+" tidak cukup (sisa: "+bQty+")");return;}
     }
   }
