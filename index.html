@@ -2951,15 +2951,6 @@ async function loadKeuData(){
   const snapBeli = { docs: snapBeliAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
   const snapKeu = { docs: snapKeuAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
 
-  // Belanja: query semua dulu, filter manual by tanggal string
-  const qBeliAll = query(collection(db,C_BELI),orderBy("tanggal","asc"));
-
-  const [snapTrx,snapBeliAll,snapKeu] = await Promise.all([
-    getDocs(qTrx),
-    getDocs(qBeliAll),
-    getDocs(qKeu)
-  ]);
-
   // Filter belanja by tanggal string dalam range
   const snapBeli = {
     docs: range 
