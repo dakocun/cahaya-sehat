@@ -1154,7 +1154,7 @@ function hitungTotalBelanja(){
 
 el("btn-simpan-belanja").addEventListener("click", async ()=>{
   const tgl=el("b-tgl").value;
-  const ket=el("b-ket").value.trim();
+  const ket=el("b-ket").value.trim().toUpperCase();
   const valid=belanjaItems.filter(i=>i.nama.trim()&&i.qty>0);
   if(!valid.length){toast("Isi minimal 1 item");return;}
 
@@ -2642,7 +2642,7 @@ el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
   if(!editBeliData) return;
   const {id, originalItems, items} = editBeliData;
   const tgl = el("edit-beli-tgl").value;
-  const ket = el("edit-beli-ket").value.trim();
+  const ket = el("edit-beli-ket").value.trim().toUpperCase();
 
   // Hitung diff stok: kembalikan stok lama, kurangi stok baru
   const stokMap = {};
