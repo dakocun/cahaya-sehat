@@ -2975,39 +2975,34 @@ async function loadKeuData(){
   const tb=el("tb-keuangan");
   tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Memuat...</td></tr>';
 
-  // Query semua data (filter by range nanti manual)
-  // Ambil semua dulu, filter manual by tgl
-  const qTrxAll = query(collection(db,C_TRX), orderBy("tgl","asc"));
-  const qKeuAll = query(collection(db,C_KEU), orderBy("tanggal","asc"));
-  const qBeliAll = query(collection(db,C_BELI), orderBy("tanggal","asc"));
+  const qTrxAll = query(collection(db,C_TRX), orderBy("tgl","desc"));
+  const qKeuAll = query(collection(db,C_KEU), orderBy("tanggal","desc"));
+  const qBeliAll = query(collection(db,C_BELI), orderBy("tanggal","desc"));
 
   const [snapTrxAll, snapBeliAll, snapKeuAll] = await Promise.all([
-    getDocs(qTrxAll),
-    getDocs(qBeliAll),
-    getDocs(qKeuAll)
+    getDocs(qTrxAll), getDocs(qBeliAll), getDocs(qKeuAll)
   ]);
 
-  // Filter by range
   const filterByTgl = (tgl) => {
     if(!range) return true;
-    return tgl >= range.s.toISOString().split("T")[0] 
-        && tgl <= range.e.toISOString().split("T")[0];
+    const t = tgl || "";
+    return t >= range.s.toISOString().split("T")[0] 
+        && t <= range.e.toISOString().split("T")[0];
   };
 
   const snapTrx = { docs: snapTrxAll.docs.filter(d => filterByTgl(d.data().tgl || d.data().tanggal || "")) };
   const snapBeli = { docs: snapBeliAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
   const snapKeu = { docs: snapKeuAll.docs.filter(d => filterByTgl(d.data().tanggal || "")) };
 
-  // Gabung semua jadi 1 array & sort by tanggal/waktu
   const rows=[];
 
   snapTrx.docs.forEach(d=>{
     const dt=d.data();
-    const tglStr = dt.tgl || dt.tanggal || dt.waktu?.toDate().toISOString().split("T")[0] || "-";
+    const tglStr = dt.tgl || dt.tanggal || "-";
     const isPrib=(dt.bayar||"")==="PRIBADI";
     rows.push({
       id:d.id, src:"trx", tgl:tglStr,
-      waktuSort:dt.waktu?.toDate()||new Date(tglStr),
+      waktuSort:new Date(tglStr+"T12:00:00"),
       jenis:"Penjualan", nota:d.id.slice(-8).toUpperCase(),
       masuk:isPrib?0:(dt.total||0), keluar:0,
       ket:dt.pembeli||(isPrib?"KONSUMSI PRIBADI":""),
@@ -3017,9 +3012,10 @@ async function loadKeuData(){
 
   snapBeli.docs.forEach(d=>{
     const dt=d.data();
+    const tgl = dt.tanggal||"-";
     rows.push({
-      id:d.id, src:"beli", tgl:dt.tanggal||"-",
-      waktuSort:dt.created?.toDate()||new Date(dt.tanggal||""),
+      id:d.id, src:"beli", tgl:tgl,
+      waktuSort:new Date(tgl+"T12:00:00"),
       jenis:"Belanja", nota:"-",
       masuk:0, keluar:dt.total||0,
       ket:dt.keterangan||"", raw:dt
@@ -3028,9 +3024,10 @@ async function loadKeuData(){
 
   snapKeu.docs.forEach(d=>{
     const dt=d.data();
+    const tgl = dt.tanggal||"-";
     rows.push({
-      id:d.id, src:"keu", tgl:dt.tanggal||"-",
-      waktuSort:dt.waktu?.toDate()||new Date(dt.tanggal||""),
+      id:d.id, src:"keu", tgl:tgl,
+      waktuSort:new Date(tgl+"T12:00:00"),
       jenis:dt.tipe==="modal"?"Tambah Modal":"Tarik Saldo",
       nota:"-",
       masuk:dt.tipe==="modal"?dt.jumlah:0,
@@ -3039,7 +3036,7 @@ async function loadKeuData(){
     });
   });
 
-  // Sort by waktu
+  // Sort terbaru di atas
   rows.sort((a,b)=>b.waktuSort-a.waktuSort);
 
   if(!rows.length){
@@ -3077,7 +3074,6 @@ async function loadKeuData(){
   el("keu-saldo-stat").style.background=saldo>=0?"#dcfce7":"#fee2e2";
   el("keu-saldo-stat").querySelector(".val").style.color=saldo>=0?"var(--green)":"var(--red)";
 
-  // Wire hapus - hanya modal & tarik
   tb.querySelectorAll("[data-hapus-keu]").forEach(btn=>{
     btn.addEventListener("click",()=>{
       hapusKeuangan("keu", btn.dataset.hapusKeu);
