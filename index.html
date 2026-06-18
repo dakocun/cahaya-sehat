@@ -725,27 +725,41 @@ function expBadge(expStr){
 function renderTblStok(){
   const tb=el("tb-stok"); if(!tb) return;
   if(!stokList.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted)">Belum ada obat</td></tr>';return;}
-  // Urutkan per satuan
-  const urutanSatuan = ["STRIP", "BOTOL", "AMPUL", ""];
+    // Urutkan: STRIP LAYANAN dulu, STRIP REGULER, BOTOL, AMPUL
+  const isStripLayanan = (nama) => {
+    const n = (nama||"").toUpperCase();
+    return n.includes("STRIP") && (n.includes("KOLESTEROL") || n.includes("GULA DARAH") || n.includes("ASAM URAT"));
+  };
+  
+  const getGroup = (o) => {
+    if(isStripLayanan(o.nama)) return "STRIP LAYANAN";
+    const sat = (o.satuan||"").toUpperCase();
+    if(sat === "STRIP") return "OBAT-OBATAN";
+    if(sat === "BOTOL") return "BOTOL";
+    if(sat === "AMPUL") return "AMPUL";
+    return "LAINNYA";
+  };
+  
+  const urutan = ["STRIP LAYANAN", "OBAT-OBATAN", "BOTOL", "AMPUL", "LAINNYA"];
   const sorted = [...stokList].sort((a,b) => {
-    const sa = urutanSatuan.indexOf((a.satuan||"").toUpperCase());
-    const sb = urutanSatuan.indexOf((b.satuan||"").toUpperCase());
-    if(sa !== sb) return sa - sb;
+    const ga = urutan.indexOf(getGroup(a));
+    const gb = urutan.indexOf(getGroup(b));
+    if(ga !== gb) return ga - gb;
     return (a.nama||"").localeCompare(b.nama||"");
   });
   
-  let currentSatuan = "";
+  let currentGroup = "";
   let html = "";
   
   sorted.forEach(o => {
-    const sat = (o.satuan || "LAINNYA").toUpperCase();
+    const group = getGroup(o);
     
-    // Separator
-    if(sat !== currentSatuan){
-      currentSatuan = sat;
+    if(group !== currentGroup){
+      currentGroup = group;
+      const icon = group === "STRIP LAYANAN" ? "&#129657;" : "&#128230;";
       html += `<tr style="background:var(--navy)">
         <td colspan="8" style="color:#fff;font-weight:700;font-size:12px;padding:8px 10px">
-          &#128230; ${sat}
+          ${icon} ${group}
         </td>
       </tr>`;
     }
@@ -754,12 +768,15 @@ function renderTblStok(){
     const cls = s<=0 ? "out" : s<4 ? "low" : "ok";
     const lbl = s<=0 ? "Habis" : s<4 ? "Menipis" : "Aman";
     const exp = getExpTerdekat(o);
+    const hargajual = isStripLayanan(o.nama) 
+      ? '<span style="color:var(--muted)">- (via layanan)</span>' 
+      : rp(o.harga_jual);
     
     html += `<tr>
       <td><strong>${esc(o.nama)}</strong></td>
       <td>${esc(o.satuan||"-")}</td><td>${s}</td>
       <td>${rp(o.harga_beli)}</td>
-      <td>${(o.nama.toUpperCase().includes("STRIP")&&(o.nama.toUpperCase().includes("KOLESTEROL")||o.nama.toUpperCase().includes("GULA DARAH")||o.nama.toUpperCase().includes("ASAM URAT"))) ? '<span style="color:var(--muted)">- (via layanan)</span>' : rp(o.harga_jual)}</td>
+      <td>${hargajual}</td>
       <td>${expBadge(exp)}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
       <td><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>
