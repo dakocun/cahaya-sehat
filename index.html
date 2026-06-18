@@ -414,9 +414,10 @@ tr:hover td{background:#f8fafc}
 
   <!-- Summary -->
   <div class="stats" style="margin-top:4px">
-    <div class="stat"><div class="val" id="keu-masuk">-</div><div class="lbl">Total Uang Masuk</div></div>
-    <div class="stat"><div class="val" id="keu-keluar">-</div><div class="lbl">Total Uang Keluar</div></div>
-    <div class="stat" id="keu-saldo-stat"><div class="val" id="keu-saldo">-</div><div class="lbl">Saldo Seharusnya</div></div>
+    <div class="stat"><div class="val" id="keu-masuk">-</div><div class="lbl">Omzet</div></div>
+    <div class="stat"><div class="val" id="keu-keluar">-</div><div class="lbl">Modal Belanja</div></div>
+    <div class="stat" id="keu-profit-kotor-stat"><div class="val" id="keu-profit-kotor">-</div><div class="lbl">Surplus Kas</div></div>
+    <div class="stat" id="keu-profit-bersih-stat"><div class="val" id="keu-profit-bersih">-</div><div class="lbl">Laba Kotor</div></div>
   </div>
 </div>
 
@@ -3044,12 +3045,25 @@ async function loadKeuData(){
     </tr>`;
   }).join("");
 
-  const saldo = totalMasuk - totalKeluar;
-  el("keu-masuk").textContent = rp(totalMasuk);
-  el("keu-keluar").textContent = rp(totalKeluar);
-  el("keu-saldo").textContent = rp(saldo);
-  el("keu-saldo-stat").style.background = saldo >= 0 ? "#dcfce7" : "#fee2e2";
-  el("keu-saldo-stat").querySelector(".val").style.color = saldo >= 0 ? "var(--green)" : "var(--red)";
+  const modalBelanja = totalKeluar;
+  const omzet = totalMasuk;
+  const surplusKas = omzet - modalBelanja;
+  
+  let labaKotor = 0;
+  snapTrx.docs.forEach(d => {
+    labaKotor += d.data().untung || 0;
+  });
+  
+  el("keu-masuk").textContent = rp(omzet);
+  el("keu-keluar").textContent = rp(modalBelanja);
+  el("keu-profit-kotor").textContent = rp(surplusKas);
+  el("keu-profit-bersih").textContent = rp(labaKotor);
+  
+  el("keu-profit-kotor-stat").style.background = surplusKas >= 0 ? "#dcfce7" : "#fee2e2";
+  el("keu-profit-kotor-stat").querySelector(".val").style.color = surplusKas >= 0 ? "var(--green)" : "var(--red)";
+  
+  el("keu-profit-bersih-stat").style.background = labaKotor >= 0 ? "#dcfce7" : "#fee2e2";
+  el("keu-profit-bersih-stat").querySelector(".val").style.color = labaKotor >= 0 ? "var(--green)" : "var(--red)";
 
   tb.querySelectorAll("[data-hapus-keu]").forEach(btn => {
     btn.addEventListener("click", () => {
