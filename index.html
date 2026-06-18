@@ -734,13 +734,13 @@ function renderTblStok(){
   const getGroup = (o) => {
     if(isStripLayanan(o.nama)) return "STRIP LAYANAN";
     const sat = (o.satuan||"").toUpperCase();
-    if(sat === "STRIP") return "OBAT-OBATAN";
+    if(sat === "STRIP") return "TABLET/KAPSUL";
     if(sat === "BOTOL") return "BOTOL";
     if(sat === "AMPUL") return "AMPUL";
     return "LAINNYA";
   };
   
-  const urutan = ["STRIP LAYANAN", "OBAT-OBATAN", "BOTOL", "AMPUL", "LAINNYA"];
+  const urutan = ["STRIP LAYANAN", "TABLET/KAPSUL", "BOTOL", "AMPUL", "LAINNYA"];
   const sorted = [...stokList].sort((a,b) => {
     const ga = urutan.indexOf(getGroup(a));
     const gb = urutan.indexOf(getGroup(b));
