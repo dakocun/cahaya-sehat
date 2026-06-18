@@ -796,7 +796,7 @@ function renderTblStok(){
       stokDisplay = sortedExps.map(([,qty]) => String(qty)).join("<br>");
     }
     
-    const rowStyle = batchCount > 1 ? 'style="min-height:'+(batchCount*40)+'px;vertical-align:middle"' : '';
+    const rowStyle = batchCount > 1 ? 'style="min-height:'+(batchCount*70)+'px;vertical-align:middle"' : '';
     
     const hargajual = isStripLayanan(o.nama) 
       ? '<span style="color:var(--muted)">- (via layanan)</span>' 
