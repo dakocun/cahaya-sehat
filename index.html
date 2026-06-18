@@ -597,6 +597,30 @@ const db = getFirestore(initializeApp({
   appId:"1:847897389700:web:cc6e2bf3633f67c1dfb0d1"
 }));
 
+
+function validasiBayar(mode){
+  const wrap = el(mode+"-bayar-btns");
+  const metode = wrap?.dataset.selected || "TUNAI";
+  
+  if(metode === "TUNAI"){
+    const totalEl = el(mode+"-total");
+    const total = parseInt((totalEl?.textContent || "0").replace(/\D/g, "")) || 0;
+    const bayarEl = el(mode+"-tunai-bayar");
+    const bayar = parseFloat(bayarEl?.value) || 0;
+    
+    if(!bayarEl || !bayarEl.value){
+      toast("Isi jumlah bayar untuk pembayaran tunai!");
+      return false;
+    }
+    if(bayar < total){
+      toast("Jumlah bayar kurang! Total: " + rp(total));
+      return false;
+    }
+  }
+  return true;
+}
+  
+
 const LOGO    = document.getElementById("logo-data").src;
 const C_OBAT  = "obat_asriani";
 const C_TRX   = "transaksi_asriani";
@@ -1598,6 +1622,7 @@ el("tes-diskon").addEventListener("input",()=>hitungTotalJual("tes"));
 
 // ── PROSES JUAL ──────────────────────────────────────────
 el("btn-proses-jual").addEventListener("click", async ()=>{
+  if(!validasiBayar("jual")) return; // ⬅ TAMBAH
   const validObat=jualItems.filter(i=>i.id);
   const validJasa=jasaItems.filter(i=>i.id);
   if(!validObat.length&&!validJasa.length){toast("Pilih minimal 1 obat atau layanan");return;}
@@ -1688,6 +1713,7 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
 
 // ── PROSES TES ───────────────────────────────────────────
 el("btn-proses-tes").addEventListener("click",()=>{
+  if(!validasiBayar("tes")) return; // ⬅ TAMBAH
   const validObat=tesItems.filter(i=>i.id);
   const validJasa=tesJasaItems.filter(i=>i.id);
   if(!validObat.length&&!validJasa.length){toast("Pilih minimal 1 item");return;}
