@@ -1815,48 +1815,50 @@ function getRekapRange(){
 
 async function loadRekap(){
   if(!rekapWired){
-    rekapWired=true;
-    // Isi tahun
-    const tSel=el("rekap-tahun-sel");
-    for(let y=new Date().getFullYear();y>=2024;y--){
-      const opt=document.createElement("option");
-      opt.value=y;opt.text=y;tSel.appendChild(opt);
-    }
-    el("rekap-bulan-sel").value=rekapBulan;
-    el("rekap-tahun-sel").value=rekapTahun;
-
-document.querySelectorAll(".rekap-period").forEach(btn=>{
-  btn.addEventListener("click",()=>{
-    rekapPeriod = btn.dataset.period;
+    rekapWired = true;
     
-    document.querySelectorAll(".rekap-period").forEach(b => {
-      b.className = "btn btn-outline btn-sm rekap-period";
+    const tSel = el("rekap-tahun-sel");
+    for(let y = new Date().getFullYear(); y >= 2024; y--){
+      const opt = document.createElement("option");
+      opt.value = y;
+      opt.text = y;
+      tSel.appendChild(opt);
+    }
+    el("rekap-bulan-sel").value = rekapBulan;
+    el("rekap-tahun-sel").value = rekapTahun;
+
+    document.querySelectorAll(".rekap-period").forEach(btn => {
+      btn.addEventListener("click", () => {
+        rekapPeriod = btn.dataset.period;
+        
+        document.querySelectorAll(".rekap-period").forEach(b => {
+          b.className = "btn btn-outline btn-sm rekap-period";
+        });
+        btn.className = "btn btn-navy btn-sm rekap-period active-period";
+        
+        const picker = el("rekap-bulan-picker");
+        if(rekapPeriod === "pilih"){
+          picker.style.display = "flex";
+          el("rekap-bulan-sel").value = rekapBulan;
+          el("rekap-tahun-sel").value = rekapTahun;
+        } else if(rekapPeriod === "bulan"){
+          picker.style.display = "none";
+          rekapBulan = new Date().getMonth();
+          rekapTahun = new Date().getFullYear();
+        } else {
+          picker.style.display = "none";
+        }
+        
+        loadRekapData();
+      });
     });
-    btn.className = "btn btn-navy btn-sm rekap-period active-period";
-    
-    const picker = el("rekap-bulan-picker");
-    if(rekapPeriod === "pilih"){
-      picker.style.display = "flex";
-      el("rekap-bulan-sel").value = rekapBulan;
-      el("rekap-tahun-sel").value = rekapTahun;
-    } else if(rekapPeriod === "bulan"){
-      picker.style.display = "none";
-      rekapBulan = new Date().getMonth();
-      rekapTahun = new Date().getFullYear();
-    } else {
-      picker.style.display = "none";
-    }
-    
-    loadRekapData(); // <-- PANGGIL INI
-  });
-});
 
-    el("rekap-bulan-sel").addEventListener("change",()=>{
-      rekapBulan=parseInt(el("rekap-bulan-sel").value);
+    el("rekap-bulan-sel").addEventListener("change", () => {
+      rekapBulan = parseInt(el("rekap-bulan-sel").value);
       loadRekapData();
     });
-    el("rekap-tahun-sel").addEventListener("change",()=>{
-      rekapTahun=parseInt(el("rekap-tahun-sel").value);
+    el("rekap-tahun-sel").addEventListener("change", () => {
+      rekapTahun = parseInt(el("rekap-tahun-sel").value);
       loadRekapData();
     });
   }
@@ -1864,6 +1866,7 @@ document.querySelectorAll(".rekap-period").forEach(btn=>{
   loadRekapData();
 }
 
+  
 async function loadRekapData(){
   const range = getRekapRange();
   
