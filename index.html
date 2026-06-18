@@ -2611,11 +2611,13 @@ function renderEditBeliItems(){
 }
 
 function hitungEditBeliTotal(){
-  let total=0;
-  (editBeliData?.items||[]).forEach(it=>{
-    total += (it.harga_beli||0)*(it.qty||1);
+  let total = 0;
+  document.querySelectorAll("#edit-beli-items [data-bidx]").forEach(row => {
+    const qty = parseInt(row.querySelector(".edit-beli-qty")?.value) || 1;
+    const hbeliSatuan = parseFloat(row.querySelector(".edit-beli-hbeli")?.value) || 0;
+    total += hbeliSatuan; // hbeli input adalah harga total
   });
-  el("edit-beli-total").textContent=rp(total);
+  el("edit-beli-total").textContent = rp(total);
 }
 
 el("btn-batal-edit-beli").addEventListener("click",()=>{
@@ -2662,11 +2664,10 @@ el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
   }
 
   // Hitung ulang dari DOM (biar pasti)
-  let total=0;
+  let total = 0;
   document.querySelectorAll("#edit-beli-items [data-bidx]").forEach(row => {
-    const qty = parseInt(row.querySelector(".edit-beli-qty")?.value) || 1;
-    const hbeli = parseFloat(row.querySelector(".edit-beli-hbeli")?.value) || 0;
-    total += Math.round(hbeli / qty) * qty; // harga_beli per satuan × qty
+    const hbeliTotal = parseFloat(row.querySelector(".edit-beli-hbeli")?.value) || 0;
+    total += hbeliTotal;
   });
   
   // Update items array dari DOM juga
