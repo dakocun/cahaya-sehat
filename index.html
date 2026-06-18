@@ -2988,8 +2988,7 @@ async function loadKeuData(){
   const filterByTgl = (tgl) => {
     if(!range) return true;
     const t = tgl || "";
-    return t >= range.s.toISOString().split("T")[0] 
-        && t <= range.e.toISOString().split("T")[0];
+    return t >= range.s && t <= range.e;
   };
 
   const snapTrx = { docs: snapTrxAll.docs.filter(d => filterByTgl(d.data().tgl || d.data().tanggal || "")) };
