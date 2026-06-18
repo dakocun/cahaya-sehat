@@ -2465,6 +2465,7 @@ async function loadKeuangan(){
     document.querySelectorAll(".keu-period").forEach(btn=>{
       btn.addEventListener("click",()=>{
         keuPeriod=btn.dataset.kp;
+        console.log("🟢 Tombol diklik:", keuPeriod); // ⬅ TAMBAH
         document.querySelectorAll(".keu-period").forEach(b=>b.className="btn btn-outline btn-sm keu-period");
         btn.className="btn btn-navy btn-sm keu-period active-period";
         el("keu-bulan-picker").style.display=keuPeriod==="bulan"?"flex":"none";
