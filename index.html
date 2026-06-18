@@ -766,42 +766,23 @@ function renderTblStok(){
     }
     
     const totalStok = o.stok||0;
-    const cls = totalStok<=0 ? "out" : totalStok<4 ? "low" : "ok";
-    const lbl = totalStok<=0 ? "Habis" : totalStok<4 ? "Menipis" : "Aman";
     
     // Build stok per exp + exp date
     const batches = o.batches 
       ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0)
       : [];
     
-    let expDisplay = "";
-    let stokDisplay = "";
-    
-    if(batches.length === 0){
-      expDisplay = '<span style="color:var(--muted)">-</span>';
-      stokDisplay = String(totalStok);
-    } else {
-      // Gabungkan per exp
+    // Gabungkan per exp
+    let batchCount = 1;
+    if(batches.length > 0){
       const expMap = {};
       batches.forEach(([,b]) => {
         const ek = b.exp || "-";
         expMap[ek] = (expMap[ek] || 0) + (b.qty || 0);
       });
-      const sortedExps = Object.entries(expMap).sort((a,b) => (a[0]||"9999").localeCompare(b[0]||"9999"));
-      
-      expDisplay = sortedExps.map(([exp]) => 
-        exp !== "-" ? `<span style="font-size:11px">${exp}</span>` : '<span style="color:var(--muted);font-size:11px">-</span>'
-      ).join("<br>");
-      
-      stokDisplay = sortedExps.map(([,qty]) => String(qty)).join("<br>");
+      batchCount = Object.keys(expMap).length;
     }
-    
-    const hargajual = isStripLayanan(o.nama) 
-      ? '<span style="color:var(--muted)">- (via layanan)</span>' 
-      : rp(o.harga_jual);
-    
-    const rowCount = stokDisplay.split("<br>").length;
-    const rowStyle = rowCount > 1 ? 'style="min-height:'+(rowCount*28)+'px"' : '';
+    const rowStyle = batchCount > 1 ? 'style="min-height:'+(batchCount*40)+'px;vertical-align:middle"' : '';
     
     html += `<tr ${rowStyle}>
       <td><strong>${esc(o.nama)}</strong></td>
@@ -824,18 +805,126 @@ function renderTblStok(){
 function editStok(id){
   const o = stokList.find(x=>x.id===id);
   if(!o) return;
-  // Tampilkan form dan isi dengan data obat
+  
+  const batches = o.batches 
+    ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0)
+    : [];
+  
+  let batchForms = "";
+  
+  if(batches.length === 0){
+    batchForms = `
+      <div style="background:var(--bg);padding:10px;border-radius:8px;margin-bottom:8px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Batch #1 (total stok)</div>
+        <div class="form-row">
+          <div class="field"><label>Qty</label><input class="eb-qty" value="${o.stok||0}" type="number" min="0"></div>
+          <div class="field"><label>Exp Date</label><input class="eb-exp" type="date" value="${getExpTerdekat(o)||""}"></div>
+        </div>
+      </div>`;
+  } else {
+    batchForms = batches.map(([bid, b], i) => `
+      <div style="background:var(--bg);padding:10px;border-radius:8px;margin-bottom:8px" data-bid="${bid}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:600;color:var(--navy)">Batch #${i+1}</span>
+          <button class="btn btn-red btn-sm eb-del-batch" style="padding:2px 8px;font-size:10px">&#10005;</button>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Qty</label><input class="eb-qty" value="${b.qty||0}" type="number" min="0"></div>
+          <div class="field"><label>Exp Date</label><input class="eb-exp" type="date" value="${b.exp||""}"></div>
+        </div>
+      </div>`
+    ).join("");
+  }
+  
   el("card-tambah-stok").style.display="block";
-  el("ms-nama").value = o.nama||"";
-  el("ms-satuan").value = o.satuan||"";
-  el("ms-qty").value = "";
-  el("ms-hbeli").value = o.harga_beli||"";
-  el("ms-hjual").value = o.harga_jual||"";
-  el("ms-exp").value = getExpTerdekat(o)||"";
-  // Simpan id yang sedang diedit
+  el("card-tambah-stok").innerHTML = `
+    <h2>✏️ Edit Obat: ${esc(o.nama)}</h2>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field"><label>Nama Obat</label><input id="ms-nama" type="text" value="${esc(o.nama)}"></div>
+      <div class="field"><label>Satuan</label>
+        <select id="ms-satuan">
+          <option value="STRIP" ${(o.satuan||"").toUpperCase()==="STRIP"?"selected":""}>STRIP</option>
+          <option value="BOTOL" ${(o.satuan||"").toUpperCase()==="BOTOL"?"selected":""}>BOTOL</option>
+          <option value="AMPUL" ${(o.satuan||"").toUpperCase()==="AMPUL"?"selected":""}>AMPUL</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="field"><label>Harga Beli/satuan (Rp)</label><input id="ms-hbeli" type="number" value="${o.harga_beli||0}" min="0"></div>
+      <div class="field"><label>Harga Jual/satuan (Rp)</label><input id="ms-hjual" type="number" value="${o.harga_jual||0}" min="0"></div>
+    </div>
+    <div class="section-label">📦 Batch / Exp Date</div>
+    <div id="eb-batches">${batchForms}</div>
+    <button id="eb-add-batch" class="btn btn-outline btn-sm" style="margin-bottom:12px">+ Tambah Batch</button>
+    <div style="display:flex;gap:10px">
+      <button id="btn-simpan-edit-stok" class="btn btn-navy">💾 Simpan</button>
+      <button id="btn-batal-edit-stok" class="btn btn-outline">Batal</button>
+    </div>
+  `;
+  
   el("card-tambah-stok").dataset.editId = id;
-  el("card-tambah-stok").querySelector("h2").textContent = "✏️ Edit Obat";
-  el("btn-simpan-stok-manual").textContent = "💾 Update";
+  
+  // Wire buttons
+  el("btn-batal-edit-stok").addEventListener("click", ()=>{
+    el("card-tambah-stok").style.display="none";
+    loadStok();
+  });
+  
+  el("eb-add-batch").addEventListener("click", ()=>{
+    const div = document.createElement("div");
+    div.style.cssText = "background:var(--bg);padding:10px;border-radius:8px;margin-bottom:8px";
+    div.innerHTML = `
+      <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:4px">Batch Baru</div>
+      <div class="form-row">
+        <div class="field"><label>Qty</label><input class="eb-qty" value="0" type="number" min="0"></div>
+        <div class="field"><label>Exp Date</label><input class="eb-exp" type="date"></div>
+      </div>
+      <button class="btn btn-red btn-sm eb-del-batch" style="padding:2px 8px;font-size:10px;margin-top:4px">&#10005;</button>
+    `;
+    el("eb-batches").appendChild(div);
+    div.querySelector(".eb-del-batch").addEventListener("click", ()=>div.remove());
+  });
+  
+  // Wire delete batch existing
+  el("eb-batches").querySelectorAll(".eb-del-batch").forEach(btn => {
+    btn.addEventListener("click", function(){
+      this.closest('[data-bid]')?.remove();
+    });
+  });
+  
+  // Simpan edit
+  el("btn-simpan-edit-stok").addEventListener("click", async ()=>{
+    const nama = el("ms-nama").value.trim().toUpperCase();
+    const satuan = el("ms-satuan").value;
+    const hbeli = parseFloat(el("ms-hbeli").value)||0;
+    const hjual = parseFloat(el("ms-hjual").value)||0;
+    
+    if(!nama){ toast("Nama obat wajib diisi"); return; }
+    
+    const batchEls = el("eb-batches").querySelectorAll(".form-row");
+    const batches = {};
+    let totalStok = 0;
+    
+    batchEls.forEach(row => {
+      const qty = parseInt(row.querySelector(".eb-qty")?.value)||0;
+      const exp = row.querySelector(".eb-exp")?.value || "";
+      if(qty > 0){
+        const bid = "edit_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);
+        batches[bid] = { qty, exp, harga_beli: hbeli };
+        totalStok += qty;
+      }
+    });
+    
+    await updateDoc(doc(db, C_OBAT, id), {
+      nama, satuan, harga_beli: hbeli, harga_jual: hjual,
+      stok: totalStok, batches, updated: Timestamp.now()
+    });
+    
+    toast("Obat diperbarui!");
+    el("card-tambah-stok").style.display = "none";
+    loadStok();
+  });
+  
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
