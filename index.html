@@ -3039,16 +3039,6 @@ async function loadKeuData(){
 
   rows.sort((a,b) => b.waktuSort - a.waktuSort);
 
-    console.log("📊 DEBUG SURPLUS:", {
-    periode: keuPeriod,
-    totalMasuk,
-    totalKeluar,
-    surplusKas: totalMasuk - totalKeluar,
-    jumlahTrx: snapTrx.docs.length,
-    jumlahBeli: snapBeli.docs.length
-  });
-  
-
   if(!rows.length){
     tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Belum ada data</td></tr>';
     el("keu-masuk").textContent = rp(0);
@@ -3076,6 +3066,15 @@ async function loadKeuData(){
       <td>${hapusBtn}</td>
     </tr>`;
   }).join("");
+
+  console.log("📊 DEBUG SURPLUS:", {
+    periode: keuPeriod,
+    totalMasuk,
+    totalKeluar,
+    surplusKas: totalMasuk - totalKeluar,
+    jumlahTrx: snapTrx.docs.length,
+    jumlahBeli: snapBeli.docs.length
+  });
 
   const modalBelanja = totalKeluar;
   const omzet = totalMasuk;
