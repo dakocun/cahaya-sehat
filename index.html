@@ -682,7 +682,7 @@ function renderTblStok(){
     return `<tr>
       <td><strong>${esc(o.nama)}</strong></td>
       <td>${esc(o.satuan||"-")}</td><td>${s}</td>
-      <td>${rp(o.harga_beli)}</td><td>${rp(o.harga_jual)}</td>
+      <td>${rp(o.harga_beli)}</td><td>${(o.nama.toUpperCase().includes("STRIP") && (o.nama.toUpperCase().includes("KOLESTEROL") || o.nama.toUpperCase().includes("GULA DARAH") || o.nama.toUpperCase().includes("ASAM URAT"))) ? '<span style="color:var(--muted)">- (via layanan)</span>' : rp(o.harga_jual)}</td>
       <td>${expBadge(exp)}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
       <td><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>
@@ -1176,6 +1176,8 @@ function renderItems(mode){
   stokList.forEach(o=>{
     const namaBersih = (o.nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
     if((o.stok||0)<=0) return;
+    // ⬇ TAMBAH BARIS INI: Skip strip (tidak bisa dijual langsung)
+    if(namaBersih.includes("STRIP") && (namaBersih.includes("KOLESTEROL") || namaBersih.includes("GULA DARAH") || namaBersih.includes("ASAM URAT"))) return;
     if(!grouped[namaBersih]) grouped[namaBersih] = { nama: namaBersih, batches: [] };
     
     const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
