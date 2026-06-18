@@ -2210,23 +2210,6 @@ let dashTahun=new Date().getFullYear();
 let dashPeriodWired=false;
 
 function getDashRange(){
-  if(dashPeriod==="hari"){
-    const s=new Date();s.setHours(0,0,0,0);
-    const e=new Date();e.setHours(23,59,59,999);
-    return{s,e};
-  } else if(dashPeriod==="7hari"){
-    const s=new Date();s.setDate(s.getDate()-6);s.setHours(0,0,0,0);
-    const e=new Date();e.setHours(23,59,59,999);
-    return{s,e};
-  } else if(dashPeriod==="bulan"){
-    const s=new Date(dashTahun,dashBulan,1);
-    const e=new Date(dashTahun,dashBulan+1,0,23,59,59,999);
-    return{s,e};
-  }
-  return null; // semua
-}
-
-function getDashRange(){
   if(dashPeriod==="minggu"){
     const s=new Date(); s.setDate(s.getDate()-6); s.setHours(0,0,0,0);
     const e=new Date(); e.setHours(23,59,59,999);
