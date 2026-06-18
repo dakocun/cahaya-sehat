@@ -1148,80 +1148,62 @@ function renderItems(mode){
   const items=mode==="jual"?jualItems:tesItems;
   const wrap=el(mode+"-wrap"); if(!wrap) return;
   
-  // Build lookup dulu
+  // Build lookup
   window._obatLookup = {};
   stokList.forEach(o=>{
     const namaBersih = (o.nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
     const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
-    
     if(allBatches.length===0){
       if((o.stok||0)<=0) return;
       window._obatLookup[namaBersih] = o.id+"::__all__::";
       return;
     }
-    
     const expGroups={};
     allBatches.forEach(([batchId,b])=>{
       const ek=b.exp||"";
       if(!expGroups[ek]) expGroups[ek]={qty:0,firstBatchId:batchId,exp:b.exp||""};
       expGroups[ek].qty+=b.qty||0;
     });
-    
     const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
-    
-    if(sorted.length===1&&!sorted[0][1].exp){
-      window._obatLookup[namaBersih] = o.id+"::__all__::";
-      return;
-    }
-    
     sorted.forEach(([expKey,g])=>{
-      const expTxt=g.exp?" ("+g.exp+")":"";
-      const key=namaBersih + (g.exp ? " ("+g.exp+")" : "");
-      window._obatLookup[key.replace(/\s+/g,' ').toUpperCase()] = o.id+"::"+g.firstBatchId+"::"+expKey;
+      const key=(namaBersih + (g.exp?" ("+g.exp+")":"")).replace(/\s+/g,' ').toUpperCase();
+      window._obatLookup[key] = o.id+"::"+g.firstBatchId+"::"+expKey;
     });
   });
-  
+
+  // Build list obat untuk dropdown (grouped by nama)
+  const grouped = {};
+  stokList.forEach(o=>{
+    const namaBersih = (o.nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
+    if((o.stok||0)<=0) return;
+    if(!grouped[namaBersih]) grouped[namaBersih] = { nama: namaBersih, batches: [] };
+    
+    const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
+    if(allBatches.length===0){
+      grouped[namaBersih].batches.push({ exp: "", qty: o.stok||0, batchId: "__all__", expKey: "" });
+    } else {
+      const expGroups={};
+      allBatches.forEach(([batchId,b])=>{
+        const ek=b.exp||"";
+        if(!expGroups[ek]) expGroups[ek]={qty:0,firstBatchId:batchId,exp:b.exp||""};
+        expGroups[ek].qty+=b.qty||0;
+      });
+      Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1)
+        .forEach(([expKey,g])=>{
+          grouped[namaBersih].batches.push({ exp: g.exp, qty: g.qty, batchId: g.firstBatchId, expKey });
+        });
+    }
+  });
+
   wrap.innerHTML=items.map((item,i)=>{
-    const opts=stokList.map(o=>
-      `<option value="${o.id}" ${o.id===item.id?"selected":""}>${esc(o.nama)} (${o.stok||0} ${esc(o.satuan||"")})</option>`
-    ).join("");
     const o=getObatFromItem(item);
     const hjual=hargaJualEfektif(item);
-    let hjualRow=`<div style="display:flex;align-items:center;gap:3px">
+    const hjualRow=`<div style="display:flex;align-items:center;gap:3px">
       <span style="font-size:11px;color:var(--muted)">Rp</span>
       <input type="number" class="hjual-input" value="${hjual||""}" min="0"
         style="width:80px;padding:5px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600;text-align:right">
       <span class="hjual-lbl" style="font-size:10px;color:var(--teal)">${item.harga_jual_override!=null?"✏️":""}</span>
     </div>`;
-
-    const obatOpts = stokList.flatMap(o=>{
-      const namaBersih = (o.nama || "").trim().replace(/\s+/g, ' ').toUpperCase();
-      const allBatches = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
-      const habis = (o.stok||0)<=0;
-      
-      if(allBatches.length===0){
-        const lbl = habis ? namaBersih+" — HABIS" : namaBersih+" — sisa: "+(o.stok||0);
-        return [`<option value="${namaBersih}" label="${lbl}"></option>`];
-      }
-      
-      const expGroups={};
-      allBatches.forEach(([batchId,b])=>{
-        const expKey=b.exp||"";
-        if(!expGroups[expKey]) expGroups[expKey]={qty:0,firstBatchId:batchId,exp:b.exp||""};
-        expGroups[expKey].qty+=b.qty||0;
-      });
-      
-      const sorted=Object.entries(expGroups).sort((a,b)=>(a[1].exp||"9999")>(b[1].exp||"9999")?1:-1);
-      
-      return sorted.map(([expKey,g])=>{
-        const expTxt = g.exp ? " ("+g.exp+")" : "";
-        const key = namaBersih + expTxt;
-        const compositeVal = o.id+"::"+g.firstBatchId+"::"+expKey;
-        window._obatLookup[key.replace(/\s+/g,' ').toUpperCase()] = compositeVal;
-        const lbl2 = g.qty>0 ? key+" — sisa: "+g.qty : key+" — HABIS";
-        return `<option value="${key}" label="${lbl2}"></option>`;
-      });
-    }).join("");
 
     const selectedNama = (()=>{
       if(!item.id) return "";
@@ -1233,13 +1215,11 @@ function renderItems(mode){
     })();
 
     return`<div class="item-row" data-idx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
-      <div style="flex:2;min-width:120px;position:relative">
-        <input type="text" class="sel-obat-text" list="obat-dl-${i}"
-          value="${selectedNama}"
-          style="width:100%;padding:6px 8px;font-size:12px;border:1.5px solid var(--border);border-radius:8px"
-          autocomplete="off">
-        <datalist id="obat-dl-${i}">${obatOpts}</datalist>
+      <div style="flex:2;min-width:120px;position:relative" class="custom-dropdown-wrapper">
+        <input type="text" class="sel-obat-text" value="${selectedNama}" placeholder="Ketik nama obat..."
+          style="width:100%;padding:6px 8px;font-size:12px;border:1.5px solid var(--border);border-radius:8px" autocomplete="off">
         <input type="hidden" class="sel-obat-val" value="${item.id||""}">
+        <div class="custom-dropdown-list" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:240px;overflow-y:auto;background:#fff;border:1.5px solid var(--teal);border-top:none;border-radius:0 0 8px 8px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.12)"></div>
       </div>
       <input type="number" class="qty-input" value="${item.qty}" min="1"
         style="width:38px;padding:5px 4px;font-size:13px;text-align:center;flex-shrink:0">
@@ -1254,151 +1234,100 @@ function renderItems(mode){
     const arr=mode==="jual"?jualItems:tesItems;
     const textInp = row.querySelector(".sel-obat-text");
     const hiddenInp = row.querySelector(".sel-obat-val");
+    const dropdown = row.querySelector(".custom-dropdown-list");
+    const wrapper = row.querySelector(".custom-dropdown-wrapper");
 
-    const applyObatSelection = (typed) => {
-      const key = typed.trim().replace(/\s+/g,' ').toUpperCase();
-      const compositeId = (window._obatLookup||{})[key];
-
-      if(!compositeId){
-        const isHabis = stokList.some(o=>
-          (o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===key && (o.stok||0)<=0
-        );
-        if(isHabis){
-          toast("Stok "+typed.trim()+" habis!");
-          arr[i].id=""; hiddenInp.value="";
-          const hjualInp=row.querySelector(".hjual-input");
-          if(hjualInp) hjualInp.value="";
-          hitungTotalJual(mode);
-          return false;
+    // Build dropdown HTML
+    const renderDropdown = (keyword) => {
+      const kw = (keyword||"").trim().toUpperCase();
+      let html = "";
+      let prevNama = "";
+      Object.values(grouped).forEach(g => {
+        if(kw && !g.nama.includes(kw)) return;
+        if(prevNama && prevNama !== g.nama) {
+          html += `<div style="border-top:2px solid var(--border);margin:2px 0"></div>`;
         }
-        return false;
-      }
-
-      const {obatId}=parseItemId(compositeId);
-      const found2=stokList.find(x=>x.id===obatId);
-      if(found2){
-        if((found2.stok||0)<=0){
-          toast("Stok "+found2.nama+" habis!");
-          arr[i].id=""; hiddenInp.value="";
-          hitungTotalJual(mode);
-          return false;
-        }
-        hiddenInp.value=compositeId;
-        const dupIdx=arr.findIndex((it,idx2)=>idx2!==i&&it.id===compositeId);
-        if(dupIdx!==-1){
-          arr[dupIdx].qty+=arr[i].qty||1;
-          arr.splice(i,1);
-          renderItems(mode);
-        } else {
-          arr[i].id=compositeId;
-          arr[i].harga_jual_override=null;
-          const hjualInp=row.querySelector(".hjual-input");
-          if(hjualInp) hjualInp.value=found2.harga_jual||0;
-          hitungTotalJual(mode);
-          const lbl=row.querySelector(".hjual-lbl");
-          if(lbl) lbl.textContent="";
-        }
-        return true;
-      }
-      return false;
+        prevNama = g.nama;
+        g.batches.forEach(b => {
+          const expTxt = b.exp ? " ("+b.exp+")" : "";
+          const label = g.nama + expTxt + " — sisa: " + b.qty;
+          const compositeId = g.nama.replace(/\s+/g,'_').toLowerCase() + "::" + b.batchId + "::" + (b.expKey||"");
+          // cari real compositeId dari lookup
+          const realId = window._obatLookup[(g.nama + (b.exp?" ("+b.exp+")":"")).replace(/\s+/g,' ').toUpperCase()] || "";
+          html += `<div class="dropdown-item" data-id="${realId}" data-nama="${g.nama+expTxt}"
+            style="padding:7px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid #f0f0f0;${(g.nama+expTxt).toUpperCase()===textInp.value.trim().toUpperCase()?'background:#e0f2f1':''}">
+            <strong>${g.nama}</strong>${expTxt ? ` <span style="color:var(--muted);font-size:10px">${expTxt}</span>` : ""}
+            <span style="float:right;font-size:10px;color:var(--muted)">stok: ${b.qty}</span>
+          </div>`;
+        });
+      });
+      dropdown.innerHTML = html || '<div style="padding:10px;font-size:11px;color:var(--muted)">Tidak ditemukan</div>';
+      
+      // Wire click dropdown items
+      dropdown.querySelectorAll(".dropdown-item").forEach(div => {
+        div.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const nama = div.dataset.nama;
+          const id = div.dataset.id;
+          textInp.value = nama;
+          hiddenInp.value = id;
+          dropdown.style.display = "none";
+          
+          const {obatId} = parseItemId(id);
+          const found = stokList.find(x=>x.id===obatId);
+          if(found){
+            arr[i].id = id;
+            arr[i].harga_jual_override = null;
+            const hjInp = row.querySelector(".hjual-input");
+            if(hjInp) hjInp.value = found.harga_jual||0;
+            hitungTotalJual(mode);
+            const lbl = row.querySelector(".hjual-lbl");
+            if(lbl) lbl.textContent = "";
+          }
+        });
+      });
     };
 
-    let applyTimer=null;
-    const scheduleApply=(val)=>{
-      clearTimeout(applyTimer);
-      applyTimer=setTimeout(()=>{ applyObatSelection(val); },30);
-    };
-    textInp.addEventListener("input",function(){ scheduleApply(this.value); });
-    textInp.addEventListener("change",function(){ scheduleApply(this.value); });
-    textInp.addEventListener("blur",function(){
-      scheduleApply(this.value);
-      setTimeout(()=>{
-        if(!arr[i].id && this.value){
-          this.value=""; hitungTotalJual(mode);
-        }
-      },200);
+    textInp.addEventListener("focus", function(){
+      renderDropdown(this.value);
+      dropdown.style.display = "block";
+      this.style.borderRadius = "8px 8px 0 0";
+      this.style.borderColor = "var(--teal)";
     });
-    textInp.addEventListener("focus",function(){ this.select(); });
-    
+
+    textInp.addEventListener("input", function(){
+      renderDropdown(this.value);
+      dropdown.style.display = "block";
+    });
+
+    textInp.addEventListener("blur", function(){
+      setTimeout(()=>{
+        dropdown.style.display = "none";
+        textInp.style.borderRadius = "8px";
+        textInp.style.borderColor = "var(--border)";
+      }, 150);
+    });
+
     row.querySelector(".qty-input").addEventListener("input",function(){
       arr[i].qty=parseInt(this.value)||1;
       hitungTotalJual(mode);
     });
+
     row.querySelector(".del-item").addEventListener("click",()=>{
-      arr.splice(i,1);if(!arr.length)arr.push({id:"",qty:1});renderItems(mode);
+      arr.splice(i,1);
+      if(!arr.length) arr.push({id:"",qty:1});
+      renderItems(mode);
     });
 
-    const hjualInp=row.querySelector(".hjual-input");
-    if(hjualInp){
-      hjualInp.addEventListener("input",function(){
+    const hjInp=row.querySelector(".hjual-input");
+    if(hjInp){
+      hjInp.addEventListener("input",function(){
         arr[i].harga_jual_override=parseFloat(this.value)||0;
         hitungTotalJual(mode);
         const lbl=row.querySelector(".hjual-lbl");
         if(lbl) lbl.textContent="✏️";
       });
     }
-  });
-  hitungTotalJual(mode);
-}
-
-function updateInfo(row,mode,item){
-  // Fungsi ini tidak dipakai lagi tapi dijaga agar tidak error
-}
-
-// ── JASA ITEMS ───────────────────────────────────────────
-function renderJasa(mode){
-  const items=mode==="jual"?jasaItems:tesJasaItems;
-  const wrap=el(mode==="jual"?"jasa-wrap":"tes-jasa-wrap"); if(!wrap) return;
-  if(!items.length){
-    wrap.innerHTML='<div style="font-size:12px;color:var(--muted);padding:6px 0;margin-bottom:4px">Belum ada layanan</div>';
-    hitungTotalJual(mode); return;
-  }
-  wrap.innerHTML=items.map((item,i)=>{
-    const l=layananList.find(x=>x.id===item.id);
-    const strip=l?getStripObat(l.nama):null;
-    const stokS=strip?(strip.stok||0):null;
-    let stripInfo="";
-    if(strip){
-      if(stokS<=0) stripInfo=`<small style="color:var(--red);font-weight:600">⛔ Strip habis!</small>`;
-      else if(stokS<4) stripInfo=`<small style="color:var(--yellow);font-weight:600">⚠️ Strip: ${stokS}</small>`;
-      else stripInfo=`<small style="color:var(--muted)">✓ Strip: ${stokS}</small>`;
-    } else if(l && STRIP_MAP[l.nama.toUpperCase()]!==undefined){
-      // Butuh strip tapi strip belum ada di stok
-      stripInfo=`<small style="color:var(--red);font-weight:600">⛔ Strip belum ada!</small>`;
-    }
-    // Cek Tensi & layanan tanpa strip: stripInfo tetap ""
-    const harga=item.harga_override!=null?item.harga_override:(l?l.harga:0);
-    const isOverride=item.harga_override!=null;
-    const qty=item.qty||1;
-    return`<div class="item-row" data-jidx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
-      <div style="flex:2;font-size:13px;min-width:0">${l?"&#129657; "+esc(l.nama)+" "+stripInfo:"?"}</div>
-      <input type="number" class="jasa-qty-input" value="${qty}" min="1"
-        style="width:38px;padding:5px 4px;font-size:13px;text-align:center;border:1.5px solid var(--border);border-radius:6px;flex-shrink:0">
-      <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
-        <input type="number" class="jasa-harga-input" value="${harga}" min="0"
-          style="width:80px;padding:5px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600;text-align:right">
-        <span class="jasa-harga-lbl" style="font-size:10px;color:var(--teal);flex-shrink:0">${isOverride?"✏️":"Rp"}</span>
-      </div>
-      <button class="btn btn-outline btn-sm del-jasa" style="flex-shrink:0;padding:5px 8px">&#10005;</button>
-    </div>`;
-  }).join("");
-
-  wrap.querySelectorAll(".item-row").forEach((row,i)=>{
-    const arr=mode==="jual"?jasaItems:tesJasaItems;
-    row.querySelector(".jasa-qty-input").addEventListener("input",function(){
-      arr[i].qty=parseInt(this.value)||1;
-      hitungTotalJual(mode);
-    });
-    row.querySelector(".jasa-harga-input").addEventListener("input",function(){
-      arr[i].harga_override=parseFloat(this.value)||0;
-      const lbl=row.querySelector(".jasa-harga-lbl");
-      if(lbl) lbl.textContent="✏️";
-      hitungTotalJual(mode);
-    });
-    row.querySelector(".del-jasa").addEventListener("click",()=>{
-      arr.splice(i,1);
-      renderJasa(mode);
-    });
   });
   hitungTotalJual(mode);
 }
