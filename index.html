@@ -327,7 +327,6 @@ tr.separator:hover td{background:var(--navy)!important}
     <div class="stats" style="margin-bottom:12px">
       <div class="stat"><div class="val" id="rek-trx">-</div><div class="lbl">Transaksi</div></div>
       <div class="stat"><div class="val" id="rek-omzet">-</div><div class="lbl">Total Omzet</div></div>
-      <div class="stat"><div class="val" id="rek-untung">-</div><div class="lbl">Total Untung</div></div>
     </div>
     <div style="overflow-x:auto">
       <table><thead><tr><th>Waktu</th><th>Detail</th><th>Total</th><th>Untung</th><th></th></tr></thead>
@@ -2238,7 +2237,6 @@ const filterByTgl = (tgl) => {
   });
   el("rek-trx").textContent = snapJual.docs.length;
   el("rek-omzet").textContent = rp(omzet);
-  el("rek-untung").textContent = rp(untung);
   const tbJual = el("tb-rekap-jual");
   tbJual.innerHTML = rowsJual.length
     ? rowsJual.join("")
