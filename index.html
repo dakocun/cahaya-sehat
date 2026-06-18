@@ -1269,6 +1269,19 @@ function renderItems(mode){
           e.preventDefault();
           const nama = div.dataset.nama;
           const id = div.dataset.id;
+          
+          // Cek duplikat di item lain
+          const dupIdx = arr.findIndex((it, idx2) => idx2 !== i && it.id === id);
+          
+          if(dupIdx !== -1){
+            // Sudah ada di baris lain → tambah qty, hapus baris ini
+            arr[dupIdx].qty = (arr[dupIdx].qty || 1) + (arr[i].qty || 1);
+            arr.splice(i, 1);
+            if(!arr.length) arr.push({id:"", qty:1});
+            renderItems(mode);
+            return;
+          }
+          
           textInp.value = nama;
           hiddenInp.value = id;
           dropdown.style.display = "none";
