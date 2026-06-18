@@ -2975,6 +2975,7 @@ function buildObatLookup(){
 // PERBAIKAN 4: Keuangan filter by TANGGAL (bukan Timestamp)
 // ══════════════════════════════════════════════════════════
 async function loadKeuData(){
+  try {
   const range = getKeuRange();
   const tb = el("tb-keuangan");
   tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Memuat...</td></tr>';
@@ -3102,6 +3103,11 @@ async function loadKeuData(){
       hapusKeuangan("keu", btn.dataset.hapusKeu);
     });
   });
+
+ } catch(e) {
+    console.error("❌ ERROR di loadKeuData:", e.message, e.stack);
+    tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:20px">Error: ' + e.message + '</td></tr>';
+  }
 }
 
 
