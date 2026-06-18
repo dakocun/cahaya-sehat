@@ -752,69 +752,28 @@ function renderTblStok(){
   let currentGroup = "";
   let html = "";
   
-   sorted.forEach(o => {
-    const group = getGroup(o);
-    
-    if(group !== currentGroup){
-      currentGroup = group;
-      const icon = group === "STRIP LAYANAN" ? "&#129657;" : "&#128230;";
-      html += `<tr class="separator" style="background:var(--navy)">
-        <td colspan="8" style="color:#fff;font-weight:700;font-size:12px;padding:8px 10px">
-          ${icon} ${group}
-        </td>
-      </tr>`;
-    }
-    
-    const totalStok = o.stok||0;
-    const cls = totalStok<=0 ? "out" : totalStok<4 ? "low" : "ok";
-    const lbl = totalStok<=0 ? "Habis" : totalStok<4 ? "Menipis" : "Aman";
-    
-    const batches = o.batches 
-      ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0)
-      : [];
-    
-    let expDisplay = "";
-    let stokDisplay = "";
-    let batchCount = 1;
-    
-    if(batches.length === 0){
-      expDisplay = '<span style="color:var(--muted)">-</span>';
-      stokDisplay = String(totalStok);
-    } else {
-      const expMap = {};
-      batches.forEach(([,b]) => {
-        const ek = b.exp || "-";
-        expMap[ek] = (expMap[ek] || 0) + (b.qty || 0);
+      const rowspan = sortedExps.length;
+      const totalStok = o.stok||0;
+      const clsTotal = totalStok<=0 ? "out" : totalStok<4 ? "low" : "ok";
+      const lblTotal = totalStok<=0 ? "Habis" : totalStok<4 ? "Menipis" : "Aman";
+      
+      sortedExps.forEach(([exp, qty], idx) => {
+        const s = qty;
+        const cls = s<=0 ? "out" : "ok";
+        const lbl = s<=0 ? "Habis" : "Aman";
+        const expHtml = exp !== "-" ? exp : '<span style="color:var(--muted)">-</span>';
+        
+        html += `<tr>
+          ${idx === 0 ? `<td rowspan="${rowspan}" style="vertical-align:middle"><strong>${esc(o.nama)}</strong></td>
+          <td rowspan="${rowspan}" style="vertical-align:middle">${esc(o.satuan||"-")}</td>
+          <td rowspan="${rowspan}" style="vertical-align:middle">${rp(o.harga_beli)}</td>
+          <td rowspan="${rowspan}" style="vertical-align:middle">${hargajual}</td>` : ''}
+          <td style="font-weight:600">${s}</td>
+          <td style="font-size:11px">${expHtml}</td>
+          ${idx === 0 ? `<td rowspan="${rowspan}" style="vertical-align:middle"><span class="badge ${clsTotal}">${lblTotal}</span></td>
+          <td rowspan="${rowspan}" style="vertical-align:middle"><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>` : ''}
+        </tr>`;
       });
-      const sortedExps = Object.entries(expMap).sort((a,b) => (a[0]||"9999").localeCompare(b[0]||"9999"));
-      batchCount = sortedExps.length;
-      
-      expDisplay = sortedExps.map(([exp]) => 
-        exp !== "-" ? `<span style="font-size:11px">${exp}</span>` : '<span style="color:var(--muted);font-size:11px">-</span>'
-      ).join("<br>");
-      
-      stokDisplay = sortedExps.map(([,qty]) => String(qty)).join("<br>");
-    }
-    
-    const rowStyle = batchCount > 1 ? 'style="min-height:'+(batchCount*70)+'px;vertical-align:middle"' : '';
-    
-    const hargajual = isStripLayanan(o.nama) 
-      ? '<span style="color:var(--muted)">- (via layanan)</span>' 
-      : rp(o.harga_jual);
-    
-    html += `<tr ${rowStyle}>
-      <td><strong>${esc(o.nama)}</strong></td>
-      <td>${esc(o.satuan||"-")}</td>
-      <td style="font-weight:600">${stokDisplay}</td>
-      <td>${rp(o.harga_beli)}</td>
-      <td>${hargajual}</td>
-      <td>${expDisplay}</td>
-      <td><span class="badge ${cls}">${lbl}</span></td>
-      <td><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>
-    </tr>`;
-  });
-  
-  tb.innerHTML = html;
   tb.querySelectorAll("[data-edit-stok]").forEach(btn=>{
     btn.addEventListener("click",()=>editStok(btn.dataset.editStok));
   });
