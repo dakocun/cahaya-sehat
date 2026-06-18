@@ -2977,6 +2977,7 @@ function buildObatLookup(){
 async function loadKeuData(){
   try {
   const range = getKeuRange();
+  console.log("📅 Range:", range); // ⬅ TAMBAH
   const tb = el("tb-keuangan");
   tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Memuat...</td></tr>';
 
