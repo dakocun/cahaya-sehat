@@ -1949,6 +1949,8 @@ async function loadRekapData(){
   tbBeli.querySelectorAll("[data-hapus-beli]").forEach(btn => {
     btn.addEventListener("click", () => hapusBelanja(btn.dataset.hapusBeli));
   });
+}
+  
 async function cetakUlang(id){
   const snap=await getDoc(doc(db,C_TRX,id));
   if(!snap.exists()){toast("Data tidak ditemukan");return;}
