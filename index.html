@@ -798,6 +798,10 @@ function renderTblStok(){
     
     const rowStyle = batchCount > 1 ? 'style="min-height:'+(batchCount*40)+'px;vertical-align:middle"' : '';
     
+    const hargajual = isStripLayanan(o.nama) 
+      ? '<span style="color:var(--muted)">- (via layanan)</span>' 
+      : rp(o.harga_jual);
+    
     html += `<tr ${rowStyle}>
       <td><strong>${esc(o.nama)}</strong></td>
       <td>${esc(o.satuan||"-")}</td>
