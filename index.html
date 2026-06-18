@@ -2661,8 +2661,26 @@ el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
     }
   }
 
+  // Hitung ulang dari DOM (biar pasti)
   let total=0;
-  items.forEach(it=>{ total+=(it.harga_beli||0)*(it.qty||1); });
+  document.querySelectorAll("#edit-beli-items [data-bidx]").forEach(row => {
+    const qty = parseInt(row.querySelector(".edit-beli-qty")?.value) || 1;
+    const hbeli = parseFloat(row.querySelector(".edit-beli-hbeli")?.value) || 0;
+    total += Math.round(hbeli / qty) * qty; // harga_beli per satuan × qty
+  });
+  
+  // Update items array dari DOM juga
+  document.querySelectorAll("#edit-beli-items [data-bidx]").forEach((row, idx) => {
+    const qty = parseInt(row.querySelector(".edit-beli-qty")?.value) || 1;
+    const hbeliTotal = parseFloat(row.querySelector(".edit-beli-hbeli")?.value) || 0;
+    items[idx].qty = qty;
+    items[idx].harga_beli = Math.round(hbeliTotal / qty);
+    items[idx].subtotal = hbeliTotal;
+    items[idx].nama = row.querySelector(".edit-beli-nama")?.value?.trim().toUpperCase() || items[idx].nama;
+    items[idx].satuan = row.querySelector(".edit-beli-satuan")?.value || items[idx].satuan;
+  });
+  
+  console.log("📤 Total dihitung:", total, "| Items:", items);
 
   await updateDoc(doc(db,C_BELI,id),{items,total,tanggal:tgl,keterangan:ket,updated:Timestamp.now()});
   console.log("✅ Belanja diupdate:", id, total);
