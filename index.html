@@ -103,30 +103,10 @@ tr:hover td{background:#f8fafc}
 
   <!-- Filter periode -->
   <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-    <span style="font-size:12px;color:var(--muted);font-weight:500">Periode:</span>
-    <button class="btn btn-navy btn-sm dash-period active-period" data-dp="hari">Hari Ini</button>
-    <button class="btn btn-outline btn-sm dash-period" data-dp="7hari">7 Hari</button>
-    <button class="btn btn-outline btn-sm dash-period" data-dp="bulan">Bulan</button>
-    <button class="btn btn-outline btn-sm dash-period" data-dp="semua">Dari Awal</button>
-    <div id="dp-bulan-picker" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px">
-      <select id="dp-bulan-sel" style="width:auto;padding:5px 8px;font-size:12px">
-        <option value="0">Januari</option><option value="1">Februari</option>
-        <option value="2">Maret</option><option value="3">April</option>
-        <option value="4">Mei</option><option value="5">Juni</option>
-        <option value="6">Juli</option><option value="7">Agustus</option>
-        <option value="8">September</option><option value="9">Oktober</option>
-        <option value="10">November</option><option value="11">Desember</option>
-      </select>
-      <select id="dp-tahun-sel" style="width:auto;padding:5px 8px;font-size:12px"></select>
-      <button class="btn btn-teal btn-sm" id="btn-dp-bulan-go">Tampilkan</button>
-    </div>
-  </div>
-
-  <!-- Stat dinamis -->
-  <div class="stats" style="margin-bottom:16px">
-    <div class="stat"><div class="val" id="s-trx">-</div><div class="lbl">Transaksi</div></div>
-    <div class="stat"><div class="val" id="s-omzet">-</div><div class="lbl">Omzet</div></div>
-    <div class="stat"><div class="val" id="s-profit">-</div><div class="lbl">Profit</div></div>
+    <span style="font-size:12px;color:var(--muted);font-weight:500">Tren:</span>
+    <button class="btn btn-navy btn-sm dash-period active-period" data-dp="minggu">Minggu Ini</button>
+    <button class="btn btn-outline btn-sm dash-period" data-dp="bulan">Bulan Ini</button>
+    <button class="btn btn-outline btn-sm dash-period" data-dp="semua">Keseluruhan</button>
   </div>
 
   <!-- Tren produk -->
@@ -136,8 +116,9 @@ tr:hover td{background:#f8fafc}
     <tbody id="tb-tren"><tr><td colspan="3" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
   </div>
 
+  <!-- Stok Menipis -->
   <div class="card">
-    <h2>&#9888;&#65039; Stok Menipis (&le;10)</h2>
+    <h2>&#9888;&#65039; Stok Menipis</h2>
     <table><thead><tr><th>Nama</th><th>Satuan</th><th>Sisa</th><th>Exp Terdekat</th></tr></thead>
     <tbody id="tb-rendah"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
   </div>
@@ -2245,59 +2226,68 @@ function getDashRange(){
   return null; // semua
 }
 
+let dashPeriod="minggu";
+let dashPeriodWired=false;
+
+function getDashRange(){
+  if(dashPeriod==="minggu"){
+    const s=new Date(); s.setDate(s.getDate()-6); s.setHours(0,0,0,0);
+    const e=new Date(); e.setHours(23,59,59,999);
+    return{s,e};
+  } else if(dashPeriod==="bulan"){
+    const now=new Date();
+    const s=new Date(now.getFullYear(),now.getMonth(),1);
+    const e=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59,999);
+    return{s,e};
+  }
+  return null; // semua
+}
+
 async function loadDashboard(){
   await loadStok();
+  
+  // Stat statis
   el("s-jenis").textContent=stokList.length;
-  const kurang=stokList.filter(o=>(o.stok||0)>0&&(o.stok||0)<4);
+  
+  // Stok menipis: non-strip <4, strip <6
+  const kurang=stokList.filter(o=>{
+    const stok=o.stok||0;
+    if(stok<=0) return false;
+    const nama=(o.nama||"").toUpperCase();
+    if(nama.includes("STRIP")&&(nama.includes("KOLESTEROL")||nama.includes("GULA DARAH")||nama.includes("ASAM URAT"))){
+      return stok<6;
+    }
+    return stok<4;
+  });
   el("s-rendah").textContent=kurang.length;
-
+  
+  // Exp <30 hari
   const today=new Date();today.setHours(0,0,0,0);
   const in30=new Date(today);in30.setDate(in30.getDate()+30);
   let expSoon=0;
-  stokList.forEach(o=>{const exp=getExpTerdekat(o);if(exp){const d=new Date(exp);if(d<=in30)expSoon++;}});
+  stokList.forEach(o=>{
+    const exp=getExpTerdekat(o);
+    if(exp){
+      const d=new Date(exp);
+      if(d<=in30&&d>=today) expSoon++;
+    }
+  });
   el("s-expsoon").textContent=expSoon;
-
+  
+  // Wire period buttons
   if(!dashPeriodWired){
     dashPeriodWired=true;
-    // Isi dropdown tahun
-    const tSel=el("dp-tahun-sel");
-    for(let y=new Date().getFullYear();y>=2024;y--){
-      const opt=document.createElement("option");
-      opt.value=y;opt.text=y;tSel.appendChild(opt);
-    }
-    el("dp-bulan-sel").value=dashBulan;
-    el("dp-tahun-sel").value=dashTahun;
-
     document.querySelectorAll(".dash-period").forEach(btn=>{
       btn.addEventListener("click",()=>{
         dashPeriod=btn.dataset.dp;
         document.querySelectorAll(".dash-period").forEach(b=>{b.className="btn btn-outline btn-sm dash-period";});
         btn.className="btn btn-navy btn-sm dash-period active-period";
-        const picker=el("dp-bulan-picker");
-        if(dashPeriod==="bulan"){
-          picker.style.display="flex";
-          el("dp-bulan-sel").value=dashBulan;
-          el("dp-tahun-sel").value=dashTahun;
-          loadDashStat();
-        } else {
-          picker.style.display="none";
-          loadDashStat();
-        }
+        loadDashTren();
       });
     });
-
-    el("dp-bulan-sel").addEventListener("change",()=>{
-      dashBulan=parseInt(el("dp-bulan-sel").value);
-      loadDashStat();
-    });
-    el("dp-tahun-sel").addEventListener("change",()=>{
-      dashTahun=parseInt(el("dp-tahun-sel").value);
-      loadDashStat();
-    });
   }
-
-  loadDashStat();
-
+  
+  // Tabel stok menipis
   const tb=el("tb-rendah");
   tb.innerHTML=kurang.length
     ? kurang.map(o=>`<tr>
@@ -2307,9 +2297,11 @@ async function loadDashboard(){
         <td>${expBadge(getExpTerdekat(o))}</td>
       </tr>`).join("")
     : '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Semua stok aman &#10003;</td></tr>';
+  
+  loadDashTren();
 }
 
-async function loadDashStat(){
+async function loadDashTren(){
   const range=getDashRange();
   let q;
   if(range){
@@ -2320,12 +2312,9 @@ async function loadDashStat(){
     q=query(collection(db,C_TRX),orderBy("waktu","desc"));
   }
   const snap=await getDocs(q);
-  let omzet=0,profit=0;
   const tren={};
   snap.docs.forEach(d=>{
     const dt=d.data();
-    omzet+=dt.total||0;
-    profit+=dt.untung||0;
     (dt.items||[]).forEach(i=>{
       const k=i.nama;
       if(!tren[k]) tren[k]={qty:0,omzet:0,tipe:i.tipe||"obat"};
@@ -2333,10 +2322,6 @@ async function loadDashStat(){
       tren[k].omzet+=i.subtotal||0;
     });
   });
-  el("s-trx").textContent=snap.docs.length;
-  el("s-omzet").textContent=rp(omzet);
-  el("s-profit").textContent=rp(profit);
-
   const trenArr=Object.entries(tren).map(([nama,v])=>({nama,...v}));
   trenArr.sort((a,b)=>b.qty-a.qty);
   const tbTren=el("tb-tren");
@@ -2346,6 +2331,7 @@ async function loadDashStat(){
     <td>${rp(t.omzet)}</td>
   </tr>`).join("") || '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Belum ada data</td></tr>';
 }
+  
 // ── PEMBAYARAN ───────────────────────────────────────────
 const QRIS_LIST = ["GOPAY","SHOPEEPAY","DANA","OVO"];
 const TRANSFER_LIST = ["BRI","GOPAY","SHOPEEPAY","DANA","OVO"];
