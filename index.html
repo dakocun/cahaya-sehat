@@ -49,6 +49,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th{background:var(--bg);color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;padding:9px 10px;text-align:left}
 td{padding:9px 10px;border-top:1px solid var(--border);vertical-align:middle}
 tr:hover td{background:#f8fafc}
+tr.separator:hover td{background:var(--navy)!important}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
 .ok{background:#dcfce7;color:#15803d}.low{background:#fef3c7;color:#92400e}.out{background:#fee2e2;color:#991b1b}
 .exp-warn{background:#fef3c7;color:#92400e}.exp-ok{color:var(--muted);font-size:12px}
@@ -751,33 +752,61 @@ function renderTblStok(){
   let currentGroup = "";
   let html = "";
   
-  sorted.forEach(o => {
+   sorted.forEach(o => {
     const group = getGroup(o);
     
     if(group !== currentGroup){
       currentGroup = group;
       const icon = group === "STRIP LAYANAN" ? "&#129657;" : "&#128230;";
-      html += `<tr style="background:var(--navy)">
+      html += `<tr class="separator" style="background:var(--navy)">
         <td colspan="8" style="color:#fff;font-weight:700;font-size:12px;padding:8px 10px">
           ${icon} ${group}
         </td>
       </tr>`;
     }
     
-    const s = o.stok||0;
-    const cls = s<=0 ? "out" : s<4 ? "low" : "ok";
-    const lbl = s<=0 ? "Habis" : s<4 ? "Menipis" : "Aman";
-    const exp = getExpTerdekat(o);
+    const totalStok = o.stok||0;
+    const cls = totalStok<=0 ? "out" : totalStok<4 ? "low" : "ok";
+    const lbl = totalStok<=0 ? "Habis" : totalStok<4 ? "Menipis" : "Aman";
+    
+    // Build stok per exp + exp date
+    const batches = o.batches 
+      ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0)
+      : [];
+    
+    let expDisplay = "";
+    let stokDisplay = "";
+    
+    if(batches.length === 0){
+      expDisplay = '<span style="color:var(--muted)">-</span>';
+      stokDisplay = String(totalStok);
+    } else {
+      // Gabungkan per exp
+      const expMap = {};
+      batches.forEach(([,b]) => {
+        const ek = b.exp || "-";
+        expMap[ek] = (expMap[ek] || 0) + (b.qty || 0);
+      });
+      const sortedExps = Object.entries(expMap).sort((a,b) => (a[0]||"9999").localeCompare(b[0]||"9999"));
+      
+      expDisplay = sortedExps.map(([exp]) => 
+        exp !== "-" ? `<span style="font-size:11px">${exp}</span>` : '<span style="color:var(--muted);font-size:11px">-</span>'
+      ).join("<br>");
+      
+      stokDisplay = sortedExps.map(([,qty]) => String(qty)).join("<br>");
+    }
+    
     const hargajual = isStripLayanan(o.nama) 
       ? '<span style="color:var(--muted)">- (via layanan)</span>' 
       : rp(o.harga_jual);
     
     html += `<tr>
       <td><strong>${esc(o.nama)}</strong></td>
-      <td>${esc(o.satuan||"-")}</td><td>${s}</td>
+      <td>${esc(o.satuan||"-")}</td>
+      <td style="font-weight:600">${stokDisplay}</td>
       <td>${rp(o.harga_beli)}</td>
       <td>${hargajual}</td>
-      <td>${expBadge(exp)}</td>
+      <td>${expDisplay}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
       <td><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>
     </tr>`;
