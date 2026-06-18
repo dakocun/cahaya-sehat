@@ -800,7 +800,10 @@ function renderTblStok(){
       ? '<span style="color:var(--muted)">- (via layanan)</span>' 
       : rp(o.harga_jual);
     
-    html += `<tr>
+    const rowCount = stokDisplay.split("<br>").length;
+    const rowStyle = rowCount > 1 ? 'style="min-height:'+(rowCount*28)+'px"' : '';
+    
+    html += `<tr ${rowStyle}>
       <td><strong>${esc(o.nama)}</strong></td>
       <td>${esc(o.satuan||"-")}</td>
       <td style="font-weight:600">${stokDisplay}</td>
