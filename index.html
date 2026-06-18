@@ -980,6 +980,9 @@ el("gc-ket")?.addEventListener("input", function(){
 });
 
 el("btn-simpan-gc")?.addEventListener("click", async ()=>{
+  const btn = el("btn-simpan-gc");
+  btnLoading(btn, true);
+  
   const layananId = el("gc-layanan").value;
   const qty = parseInt(el("gc-qty").value) || 0;
   const ket = el("gc-ket").value.trim().toUpperCase();
@@ -1014,6 +1017,7 @@ el("btn-simpan-gc")?.addEventListener("click", async ()=>{
   toast(`✅ Gagal cek dicatat: ${l.nama} -${qty} strip`);
   initGagalCek();
   loadStok();
+  btnLoading(btn, false);
 });
 
 // ── BELANJA ──────────────────────────────────────────────
@@ -1177,10 +1181,13 @@ function hitungTotalBelanja(){
 }
 
 el("btn-simpan-belanja").addEventListener("click", async ()=>{
+  const btn = el("btn-simpan-belanja"); // ⬅ TAMBAH
+  btnLoading(btn, true); // ⬅ TAMBAH
+  
   const tgl=el("b-tgl").value;
   const ket=el("b-ket").value.trim().toUpperCase();
   const valid=belanjaItems.filter(i=>i.nama.trim()&&i.qty>0);
-  if(!valid.length){toast("Isi minimal 1 item");return;}
+  if(!valid.length){toast("Isi minimal 1 item"); btnLoading(btn, false); return;} // ⬅ return juga harus matikan loading
 
   let total=0;
   const detail=valid.map(i=>{
@@ -1195,15 +1202,12 @@ el("btn-simpan-belanja").addEventListener("click", async ()=>{
   // Update / tambah stok obat
   for(let idx=0; idx<detail.length; idx++){
     const item=detail[idx];
-    // docId dari nama - pakai split join hindari regex issue
     const docId=item.nama.trim().split(" ").join("_").toLowerCase();
     const ref=doc(db,C_OBAT,docId);
     const snap=await getDoc(ref);
-    // batchId unik per item pakai index + timestamp + random
     const batchId="batch_"+Date.now()+"_"+idx+"_"+Math.random().toString(36).slice(2,6);
     if(snap.exists()){
       const existing=snap.data();
-      // Pakai dot notation supaya tidak overwrite batch lain
       const updateData={
         stok:increment(item.qty),
         harga_beli:item.harga_beli,
@@ -1223,13 +1227,14 @@ el("btn-simpan-belanja").addEventListener("click", async ()=>{
         batches,created:Timestamp.now()
       });
     }
-    // Delay kecil supaya timestamp batchId tidak sama
     await new Promise(r=>setTimeout(r,2));
   }
 
   toast("Belanja disimpan & stok diperbarui!");
   resetBelanjaForm();
   loadStok();
+  
+  btnLoading(btn, false); // ⬅ TAMBAH DI AKHIR
 });
 
 async function loadBelanja(){
@@ -1622,6 +1627,10 @@ el("tes-diskon").addEventListener("input",()=>hitungTotalJual("tes"));
 
 // ── PROSES JUAL ──────────────────────────────────────────
 el("btn-proses-jual").addEventListener("click", async ()=>{
+  
+  const btn = el("btn-proses-jual"); // ⬅ TAMBAH
+  btnLoading(btn, true); // ⬅ TAMBAH
+  
   if(!validasiBayar("jual")) return; // ⬅ TAMBAH
   const validObat=jualItems.filter(i=>i.id);
   const validJasa=jasaItems.filter(i=>i.id);
@@ -1709,6 +1718,7 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   if(tunaiBtn) tunaiBtn.click();
   hitungTotalJual("jual");
   loadStok();
+  btnLoading(btn, false); // ⬅ TAMBAH DI AKHIR (sebelum tutup })
 });
 
 // ── PROSES TES ───────────────────────────────────────────
@@ -2163,6 +2173,9 @@ el("btn-batal-edit-trx").addEventListener("click",()=>{
 });
 
 el("btn-simpan-edit-trx").addEventListener("click", async ()=>{
+  const btn = el("btn-simpan-edit-trx");
+  btnLoading(btn, true);
+  
   if(!editTrxData){ return; }
   const {id, originalItems, items} = editTrxData;
   const tgl = el("edit-trx-tgl").value;
@@ -2245,6 +2258,7 @@ async function hapusTrx(id){
   toast("Transaksi dihapus & stok dikembalikan");
   await loadStok();
   loadRekapData();
+  btnLoading(btn, false); // ⬅ TAMBAH
 }
 
 // ── DASHBOARD ────────────────────────────────────────────
