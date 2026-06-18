@@ -726,7 +726,7 @@ function expBadge(expStr){
 function renderTblStok(){
   const tb=el("tb-stok"); if(!tb) return;
   if(!stokList.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted)">Belum ada obat</td></tr>';return;}
-    // Urutkan: STRIP LAYANAN dulu, STRIP REGULER, BOTOL, AMPUL
+  
   const isStripLayanan = (nama) => {
     const n = (nama||"").toUpperCase();
     return n.includes("STRIP") && (n.includes("KOLESTEROL") || n.includes("GULA DARAH") || n.includes("ASAM URAT"));
@@ -752,6 +752,48 @@ function renderTblStok(){
   let currentGroup = "";
   let html = "";
   
+  sorted.forEach(o => {
+    const group = getGroup(o);
+    
+    if(group !== currentGroup){
+      currentGroup = group;
+      const icon = group === "STRIP LAYANAN" ? "&#129657;" : "&#128230;";
+      html += `<tr class="separator" style="background:var(--navy)">
+        <td colspan="8" style="color:#fff;font-weight:700;font-size:12px;padding:8px 10px">
+          ${icon} ${group}
+        </td>
+      </tr>`;
+    }
+    
+    const batches = o.batches 
+      ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0)
+      : [];
+    
+    const hargajual = isStripLayanan(o.nama) 
+      ? '<span style="color:var(--muted)">- (via layanan)</span>' 
+      : rp(o.harga_jual);
+    
+    if(batches.length === 0){
+      const s = o.stok||0;
+      const cls = s<=0 ? "out" : s<4 ? "low" : "ok";
+      const lbl = s<=0 ? "Habis" : s<4 ? "Menipis" : "Aman";
+      html += `<tr>
+        <td><strong>${esc(o.nama)}</strong></td>
+        <td>${esc(o.satuan||"-")}</td>
+        <td>${s}</td>
+        <td>${rp(o.harga_beli)}</td>
+        <td>${hargajual}</td>
+        <td><span style="color:var(--muted)">-</span></td>
+        <td><span class="badge ${cls}">${lbl}</span></td>
+        <td><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>
+      </tr>`;
+    } else {
+      const expMap = {};
+      batches.forEach(([,b]) => {
+        const ek = b.exp || "-";
+        expMap[ek] = (expMap[ek] || 0) + (b.qty || 0);
+      });
+      const sortedExps = Object.entries(expMap).sort((a,b) => (a[0]||"9999").localeCompare(b[0]||"9999"));
       const rowspan = sortedExps.length;
       const totalStok = o.stok||0;
       const clsTotal = totalStok<=0 ? "out" : totalStok<4 ? "low" : "ok";
@@ -759,8 +801,6 @@ function renderTblStok(){
       
       sortedExps.forEach(([exp, qty], idx) => {
         const s = qty;
-        const cls = s<=0 ? "out" : "ok";
-        const lbl = s<=0 ? "Habis" : "Aman";
         const expHtml = exp !== "-" ? exp : '<span style="color:var(--muted)">-</span>';
         
         html += `<tr>
@@ -774,11 +814,16 @@ function renderTblStok(){
           <td rowspan="${rowspan}" style="vertical-align:middle"><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>` : ''}
         </tr>`;
       });
+    }
+  });
+  
+  tb.innerHTML = html;
+  
   tb.querySelectorAll("[data-edit-stok]").forEach(btn=>{
     btn.addEventListener("click",()=>editStok(btn.dataset.editStok));
   });
 }
-
+  
 function editStok(id){
   const o = stokList.find(x=>x.id===id);
   if(!o) return;
