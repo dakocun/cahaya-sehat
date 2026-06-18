@@ -2226,9 +2226,6 @@ function getDashRange(){
   return null; // semua
 }
 
-let dashPeriod="minggu";
-let dashPeriodWired=false;
-
 function getDashRange(){
   if(dashPeriod==="minggu"){
     const s=new Date(); s.setDate(s.getDate()-6); s.setHours(0,0,0,0);
