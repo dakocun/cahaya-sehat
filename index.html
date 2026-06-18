@@ -2670,15 +2670,26 @@ el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
   });
   
   // Update items array dari DOM juga
+  console.log("🔍 SEBELUM update - items dari editBeliData:", JSON.parse(JSON.stringify(items)));
+  
   document.querySelectorAll("#edit-beli-items [data-bidx]").forEach((row, idx) => {
-    const qty = parseInt(row.querySelector(".edit-beli-qty")?.value) || 1;
-    const hbeliTotal = parseFloat(row.querySelector(".edit-beli-hbeli")?.value) || 0;
+    const qtyEl = row.querySelector(".edit-beli-qty");
+    const hbeliEl = row.querySelector(".edit-beli-hbeli");
+    const namaEl = row.querySelector(".edit-beli-nama");
+    const satuanEl = row.querySelector(".edit-beli-satuan");
+    
+    console.log(`🔍 Item ${idx}: qty=${qtyEl?.value}, hbeli=${hbeliEl?.value}, nama=${namaEl?.value}, satuan=${satuanEl?.value}`);
+    
+    const qty = parseInt(qtyEl?.value) || 1;
+    const hbeliTotal = parseFloat(hbeliEl?.value) || 0;
     items[idx].qty = qty;
     items[idx].harga_beli = Math.round(hbeliTotal / qty);
     items[idx].subtotal = hbeliTotal;
-    items[idx].nama = row.querySelector(".edit-beli-nama")?.value?.trim().toUpperCase() || items[idx].nama;
-    items[idx].satuan = row.querySelector(".edit-beli-satuan")?.value || items[idx].satuan;
+    items[idx].nama = namaEl?.value?.trim().toUpperCase() || items[idx].nama;
+    items[idx].satuan = satuanEl?.value || items[idx].satuan;
   });
+  
+  console.log("🔍 SESUDAH update - items:", JSON.parse(JSON.stringify(items)));
   
   console.log("📤 Total dihitung:", total, "| Items:", items);
 
