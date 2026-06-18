@@ -1920,20 +1920,15 @@ async function loadRekapData(){
     btn.addEventListener("click",()=>hapusTrx(btn.dataset.hapusTrx));
   });
 
-  // Rekap belanja
-  const snapBeli = await getDocs(query(collection(db,C_BELI), orderBy("created","desc")));
-  let totalBeli=0;
-  const startStr = start ? start.toISOString().split("T")[0] : null;
-  const docsFiltered = startStr
-    ? snapBeli.docs.filter(d=>( d.data().tanggal||"") >= startStr)
-    : snapBeli.docs;
-  const rowsBeli = docsFiltered.map(d=>{
-    const dt=d.data();
-    const itemStr=dt.items?.map(i=>esc(i.nama)+" x"+i.qty).join(", ")||"-";
-    totalBeli+=dt.total||0;
-    return`<tr>
-      <td>${dt.tanggal||"-"}</td>
-      <td style="font-size:12px">${esc(dt.keterangan||"-")}</td>
+    // Rekap belanja
+  let totalBeli = 0;
+  const rowsBeli = snapBeliDocs.map(d => {
+    const dt = d.data();
+    const itemStr = dt.items?.map(i => esc(i.nama) + " x" + i.qty).join(", ") || "-";
+    totalBeli += dt.total || 0;
+    return `<tr>
+      <td>${dt.tanggal || "-"}</td>
+      <td style="font-size:12px">${esc(dt.keterangan || "-")}</td>
       <td style="font-size:12px">${itemStr}</td>
       <td>${rp(dt.total)}</td>
       <td style="display:flex;gap:4px">
@@ -1942,20 +1937,18 @@ async function loadRekapData(){
       </td>
     </tr>`;
   });
-  el("rek-beli-trx").textContent = docsFiltered.length;
+  el("rek-beli-trx").textContent = snapBeliDocs.length;
   el("rek-beli-total").textContent = rp(totalBeli);
   const tbBeli = el("tb-rekap-beli");
   tbBeli.innerHTML = rowsBeli.length
     ? rowsBeli.join("")
     : '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada pembelian</td></tr>';
-  tbBeli.querySelectorAll("[data-edit-beli]").forEach(btn=>{
-    btn.addEventListener("click",()=>editBelanja(btn.dataset.editBeli));
+  tbBeli.querySelectorAll("[data-edit-beli]").forEach(btn => {
+    btn.addEventListener("click", () => editBelanja(btn.dataset.editBeli));
   });
-  tbBeli.querySelectorAll("[data-hapus-beli]").forEach(btn=>{
-    btn.addEventListener("click",()=>hapusBelanja(btn.dataset.hapusBeli));
+  tbBeli.querySelectorAll("[data-hapus-beli]").forEach(btn => {
+    btn.addEventListener("click", () => hapusBelanja(btn.dataset.hapusBeli));
   });
-}
-
 async function cetakUlang(id){
   const snap=await getDoc(doc(db,C_TRX,id));
   if(!snap.exists()){toast("Data tidak ditemukan");return;}
