@@ -725,20 +725,48 @@ function expBadge(expStr){
 function renderTblStok(){
   const tb=el("tb-stok"); if(!tb) return;
   if(!stokList.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted)">Belum ada obat</td></tr>';return;}
-  tb.innerHTML=stokList.map(o=>{
-    const s=o.stok||0;
-    const cls=s<=0?"out":s<4?"low":"ok";
-    const lbl=s<=0?"Habis":s<4?"Menipis":"Aman";
-    const exp=getExpTerdekat(o);
-    return `<tr>
+  // Urutkan per satuan
+  const urutanSatuan = ["STRIP", "BOTOL", "AMPUL", ""];
+  const sorted = [...stokList].sort((a,b) => {
+    const sa = urutanSatuan.indexOf((a.satuan||"").toUpperCase());
+    const sb = urutanSatuan.indexOf((b.satuan||"").toUpperCase());
+    if(sa !== sb) return sa - sb;
+    return (a.nama||"").localeCompare(b.nama||"");
+  });
+  
+  let currentSatuan = "";
+  let html = "";
+  
+  sorted.forEach(o => {
+    const sat = (o.satuan || "LAINNYA").toUpperCase();
+    
+    // Separator
+    if(sat !== currentSatuan){
+      currentSatuan = sat;
+      html += `<tr style="background:var(--navy)">
+        <td colspan="8" style="color:#fff;font-weight:700;font-size:12px;padding:8px 10px">
+          &#128230; ${sat}
+        </td>
+      </tr>`;
+    }
+    
+    const s = o.stok||0;
+    const cls = s<=0 ? "out" : s<4 ? "low" : "ok";
+    const lbl = s<=0 ? "Habis" : s<4 ? "Menipis" : "Aman";
+    const exp = getExpTerdekat(o);
+    
+    html += `<tr>
       <td><strong>${esc(o.nama)}</strong></td>
       <td>${esc(o.satuan||"-")}</td><td>${s}</td>
-      <td>${rp(o.harga_beli)}</td><td>${(o.nama.toUpperCase().includes("STRIP") && (o.nama.toUpperCase().includes("KOLESTEROL") || o.nama.toUpperCase().includes("GULA DARAH") || o.nama.toUpperCase().includes("ASAM URAT"))) ? '<span style="color:var(--muted)">- (via layanan)</span>' : rp(o.harga_jual)}</td>
+      <td>${rp(o.harga_beli)}</td>
+      <td>${(o.nama.toUpperCase().includes("STRIP")&&(o.nama.toUpperCase().includes("KOLESTEROL")||o.nama.toUpperCase().includes("GULA DARAH")||o.nama.toUpperCase().includes("ASAM URAT"))) ? '<span style="color:var(--muted)">- (via layanan)</span>' : rp(o.harga_jual)}</td>
       <td>${expBadge(exp)}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
       <td><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>
     </tr>`;
-  }).join("");
+  });
+  
+  tb.innerHTML = html;
   tb.querySelectorAll("[data-edit-stok]").forEach(btn=>{
     btn.addEventListener("click",()=>editStok(btn.dataset.editStok));
   });
