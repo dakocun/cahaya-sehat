@@ -210,6 +210,33 @@ tr:hover td{background:#f8fafc}
     <table><thead><tr><th>Nama Layanan</th><th>Harga</th><th>Strip Terkait (otomatis)</th><th></th></tr></thead>
     <tbody id="tb-layanan"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
   </div>
+    <!-- GAGAL CEK -->
+  <div class="card" style="border-left:4px solid var(--red)">
+    <h2>❌ Catat Gagal Cek</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Mengurangi stok strip karena gagal/rusak saat pengecekan.</p>
+    <div class="form-row3">
+      <div class="field">
+        <label>Tanggal</label>
+        <input id="gc-tgl" type="date">
+      </div>
+      <div class="field">
+        <label>Jenis Layanan</label>
+        <select id="gc-layanan">
+          <option value="">-- Pilih --</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Jumlah Strip</label>
+        <input id="gc-qty" type="number" min="1" value="1">
+      </div>
+    </div>
+    <div class="field">
+      <label>Keterangan</label>
+      <input id="gc-ket" type="text" placeholder="Misal: STRIP RUSAK, EXPIRED, ERROR">
+    </div>
+    <div id="gc-strip-info" style="font-size:12px;color:var(--muted);margin-bottom:8px"></div>
+    <button id="btn-simpan-gc" class="btn btn-red">💾 Simpan Gagal Cek</button>
+  </div>
 </div>
 
 <!-- PENJUALAN -->
@@ -803,6 +830,7 @@ async function loadLayanan(){
   const snap=await getDocs(query(collection(db,C_LAY),orderBy("nama")));
   layananList=snap.docs.map(d=>({id:d.id,...d.data()}));
   renderTblLayanan();
+  initGagalCek();
   return layananList;
 }
 
@@ -893,6 +921,76 @@ async function hapusLayanan(id){
   toast("Layanan dihapus");
   loadLayanan();
 }
+
+// ── GAGAL CEK ────────────────────────────────────────────
+const C_GAGAL = "gagal_cek_asriani";
+
+// Layanan yang butuh strip (selain Tensi)
+const LAYANAN_STRIP = ["CEK KOLESTEROL", "CEK GULA DARAH", "CEK ASAM URAT"];
+
+function initGagalCek(){
+  const sel = el("gc-layanan");
+  sel.innerHTML = '<option value="">-- Pilih --</option>' +
+    layananList.filter(l => LAYANAN_STRIP.includes(l.nama.toUpperCase()))
+      .map(l => `<option value="${l.id}">${esc(l.nama)}</option>`).join("");
+  
+  el("gc-tgl").value = new Date().toISOString().split("T")[0];
+  el("gc-qty").value = 1;
+  el("gc-ket").value = "";
+  el("gc-strip-info").textContent = "";
+}
+
+el("gc-layanan")?.addEventListener("change", function(){
+  const l = layananList.find(x => x.id === this.value);
+  if(!l){ el("gc-strip-info").textContent = ""; return; }
+  const strip = getStripObat(l.nama);
+  if(strip){
+    el("gc-strip-info").innerHTML = `Strip: <strong>${esc(strip.nama)}</strong> — stok saat ini: <strong style="color:${(strip.stok||0)<=5?'var(--red)':'var(--green)'}">${strip.stok||0}</strong>`;
+  } else {
+    el("gc-strip-info").innerHTML = `<span style="color:var(--red)">⚠️ Strip belum ada di stok!</span>`;
+  }
+});
+
+el("gc-ket")?.addEventListener("input", function(){
+  this.value = this.value.toUpperCase();
+});
+
+el("btn-simpan-gc")?.addEventListener("click", async ()=>{
+  const layananId = el("gc-layanan").value;
+  const qty = parseInt(el("gc-qty").value) || 0;
+  const ket = el("gc-ket").value.trim().toUpperCase();
+  const tgl = el("gc-tgl").value;
+  
+  if(!layananId){ toast("Pilih jenis layanan"); return; }
+  if(qty <= 0){ toast("Jumlah minimal 1"); return; }
+  if(!ket){ toast("Isi keterangan"); return; }
+  
+  const l = layananList.find(x => x.id === layananId);
+  if(!l) return;
+  
+  const strip = getStripObat(l.nama);
+  if(!strip){ toast("Strip belum ada di stok!"); return; }
+  if((strip.stok||0) < qty){ toast("Stok strip tidak cukup! Sisa: " + (strip.stok||0)); return; }
+  
+  // Kurangi stok strip
+  await updateDoc(doc(db, C_OBAT, strip.id), { stok: increment(-qty) });
+  
+  // Catat di koleksi gagal_cek
+  await addDoc(collection(db, C_GAGAL), {
+    tgl,
+    layanan: l.nama,
+    layananId,
+    qty,
+    keterangan: ket,
+    stripId: strip.id,
+    stripNama: strip.nama,
+    waktu: Timestamp.now()
+  });
+  
+  toast(`✅ Gagal cek dicatat: ${l.nama} -${qty} strip`);
+  initGagalCek();
+  loadStok();
+});
 
 // ── BELANJA ──────────────────────────────────────────────
 function resetBelanjaForm(){
