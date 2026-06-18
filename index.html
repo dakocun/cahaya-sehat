@@ -69,6 +69,11 @@ tr:hover td{background:#f8fafc}
 #nota-content{padding:20px 20px 12px}
 .nota-actions{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:#f8fafc;border-radius:0 0 12px 12px;flex-wrap:wrap}
 /* print handled via popup window */
+
+.btn-loading{opacity:.6;pointer-events:none;position:relative}
+.btn-loading::after{content:"";position:absolute;width:14px;height:14px;top:50%;right:10px;margin-top:-7px;border:2px solid transparent;border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+  
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -597,6 +602,19 @@ const C_OBAT  = "obat_asriani";
 const C_TRX   = "transaksi_asriani";
 const C_LAY   = "layanan_asriani";
 const C_BELI  = "belanja_asriani";
+
+function btnLoading(btn, loading){
+  if(loading){
+    btn.disabled = true;
+    btn.classList.add("btn-loading");
+    btn.dataset.originalText = btn.textContent;
+    btn.textContent = "⏳ Menyimpan...";
+  } else {
+    btn.disabled = false;
+    btn.classList.remove("btn-loading");
+    btn.textContent = btn.dataset.originalText || btn.textContent;
+  }
+}
 
 // ── AUTO HARGA ──────────────────────────────────────────
 // hargaBeliSatuan = harga beli per satuan (sudah dibagi qty)
@@ -2607,6 +2625,9 @@ el("btn-batal-edit-beli").addEventListener("click",()=>{
 
 el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
   if(!editBeliData) return;
+  const btn = el("btn-simpan-edit-beli"); // ⬅ TAMBAH
+  btnLoading(btn, true); // ⬅ TAMBAH
+  
   const {id, originalItems, items} = editBeliData;
   const tgl = el("edit-beli-tgl").value;
   const ket = el("edit-beli-ket").value.trim().toUpperCase();
@@ -2623,13 +2644,15 @@ el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
   });
   for(const [nama, diff] of Object.entries(stokMap)){
     if(diff===0) continue;
-    const obat=stokList.find(o=>o.nama===nama);
+    const namaBersih = (nama||"").trim().replace(/\s+/g,' ').toUpperCase();
+    const obat=stokList.find(o=>(o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===namaBersih);
     if(obat) await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(diff)});
   }
 
   // Update harga_jual di stok sesuai item baru (hanya jika item masih ada)
   for(const item of items){
-    const obat=stokList.find(o=>o.nama===item.nama);
+    const namaBersih = (item.nama||"").trim().replace(/\s+/g,' ').toUpperCase();
+    const obat=stokList.find(o=>(o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===namaBersih);
     if(obat && item.harga_jual>0){
       await updateDoc(doc(db,C_OBAT,obat.id),{
         harga_beli:item.harga_beli||obat.harga_beli,
@@ -2642,11 +2665,14 @@ el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
   items.forEach(it=>{ total+=(it.harga_beli||0)*(it.qty||1); });
 
   await updateDoc(doc(db,C_BELI,id),{items,total,tanggal:tgl,keterangan:ket,updated:Timestamp.now()});
+  console.log("✅ Belanja diupdate:", id, total);
   toast("Belanja diperbarui!");
   el("modal-edit-beli").style.display="none";
   editBeliData=null;
   await loadStok();
   loadRekapData();
+
+  btnLoading(btn, false); // ⬅ TAMBAH DI AKHIR
 });
 
 
