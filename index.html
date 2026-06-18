@@ -1794,15 +1794,23 @@ let rekapTahun = new Date().getFullYear();
 let rekapWired = false;
 
 function getRekapRange(){
-  const now=new Date();
   if(rekapPeriod==="bulan"){
-    return new Date(now.getFullYear(),now.getMonth(),1);
+    const now = new Date();
+    return {
+      s: new Date(now.getFullYear(), now.getMonth(), 1),
+      e: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    };
   } else if(rekapPeriod==="minggu"){
-    const s=new Date();s.setDate(s.getDate()-6);s.setHours(0,0,0,0);return s;
+    const s = new Date(); s.setDate(s.getDate()-6); s.setHours(0,0,0,0);
+    const e = new Date(); e.setHours(23,59,59,999);
+    return { s, e };
   } else if(rekapPeriod==="pilih"){
-    return new Date(rekapTahun,rekapBulan,1);
+    return {
+      s: new Date(rekapTahun, rekapBulan, 1),
+      e: new Date(rekapTahun, rekapBulan + 1, 0, 23, 59, 59, 999)
+    };
   }
-  return null;
+  return null; // "semua"
 }
 
 async function loadRekap(){
@@ -1857,20 +1865,24 @@ document.querySelectorAll(".rekap-period").forEach(btn=>{
 }
 
 async function loadRekapData(){
-  const start = getRekapRange();
-  let qJual;
-  if(start){
-    const endOfPeriod=new Date(start);
-    if(rekapPeriod==="pilih"||rekapPeriod==="bulan"){
-      endOfPeriod.setMonth(endOfPeriod.getMonth()+1);endOfPeriod.setDate(0);endOfPeriod.setHours(23,59,59,999);
-      qJual=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(start)),where("waktu","<=",Timestamp.fromDate(endOfPeriod)),orderBy("waktu","desc"));
-    } else {
-      const e=new Date();e.setHours(23,59,59,999);
-      qJual=query(collection(db,C_TRX),where("waktu",">=",Timestamp.fromDate(start)),where("waktu","<=",Timestamp.fromDate(e)),orderBy("waktu","desc"));
-    }
-  } else {
-    qJual=query(collection(db,C_TRX),orderBy("waktu","desc"));
-  }
+  const range = getRekapRange();
+  
+  const qTrxAll = query(collection(db,C_TRX), orderBy("tgl","desc"));
+  const qBeliAll = query(collection(db,C_BELI), orderBy("tanggal","desc"));
+  
+  const [snapTrxAll, snapBeliAll] = await Promise.all([
+    getDocs(qTrxAll), getDocs(qBeliAll)
+  ]);
+  
+  const filterByTgl = (tgl) => {
+    if(!range) return true;
+    const t = tgl || "";
+    return t >= range.s.toISOString().split("T")[0] 
+        && t <= range.e.toISOString().split("T")[0];
+  };
+  
+  const snapJual = { docs: snapTrxAll.docs.filter(d => filterByTgl(d.data().tgl || d.data().tanggal || "")) };
+  const snapBeliDocs = snapBeliAll.docs.filter(d => filterByTgl(d.data().tanggal || ""));
 
   // Rekap penjualan
   const snapJual = await getDocs(qJual);
@@ -3029,7 +3041,7 @@ async function loadKeuData(){
   });
 
   // Sort by waktu
-  rows.sort((a,b)=>a.waktuSort-b.waktuSort);
+  rows.sort((a,b)=>b.waktuSort-a.waktuSort);
 
   if(!rows.length){
     tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Belum ada data</td></tr>';
