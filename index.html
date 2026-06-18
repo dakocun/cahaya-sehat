@@ -2470,6 +2470,7 @@ async function loadKeuangan(){
         btn.className="btn btn-navy btn-sm keu-period active-period";
         el("keu-bulan-picker").style.display=keuPeriod==="bulan"?"flex":"none";
         loadKeuData();
+        console.log("🟢 loadKeuData dipanggil untuk:", keuPeriod);
       });
     });
     el("keu-bulan-sel").addEventListener("change",()=>{keuBulan=parseInt(el("keu-bulan-sel").value);loadKeuData();});
