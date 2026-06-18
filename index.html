@@ -1794,23 +1794,23 @@ let rekapTahun = new Date().getFullYear();
 let rekapWired = false;
 
 function getRekapRange(){
+  const toLocalDate = (d) => {
+    return d.getFullYear() + "-" + 
+      String(d.getMonth() + 1).padStart(2,"0") + "-" + 
+      String(d.getDate()).padStart(2,"0");
+  };
+  
   if(rekapPeriod==="bulan"){
     const now = new Date();
-    return {
-      s: new Date(now.getFullYear(), now.getMonth(), 1),
-      e: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-    };
+    return { s: toLocalDate(new Date(now.getFullYear(), now.getMonth(), 1)), e: toLocalDate(new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)) };
   } else if(rekapPeriod==="minggu"){
     const s = new Date(); s.setDate(s.getDate()-6); s.setHours(0,0,0,0);
     const e = new Date(); e.setHours(23,59,59,999);
-    return { s, e };
+    return { s: toLocalDate(s), e: toLocalDate(e) };
   } else if(rekapPeriod==="pilih"){
-    return {
-      s: new Date(rekapTahun, rekapBulan, 1),
-      e: new Date(rekapTahun, rekapBulan + 1, 0, 23, 59, 59, 999)
-    };
+    return { s: toLocalDate(new Date(rekapTahun, rekapBulan, 1)), e: toLocalDate(new Date(rekapTahun, rekapBulan + 1, 0, 23, 59, 59, 999)) };
   }
-  return null; // "semua"
+  return null;
 }
 
 async function loadRekap(){
@@ -1877,12 +1877,11 @@ async function loadRekapData(){
     getDocs(qTrxAll), getDocs(qBeliAll)
   ]);
   
-  const filterByTgl = (tgl) => {
-    if(!range) return true;
-    const t = tgl || "";
-    return t >= range.s.toISOString().split("T")[0] 
-        && t <= range.e.toISOString().split("T")[0];
-  };
+const filterByTgl = (tgl) => {
+  if(!range) return true;
+  const t = tgl || "";
+  return t >= range.s && t <= range.e;
+};
   
   const snapJual = { docs: snapTrxAll.docs.filter(d => filterByTgl(d.data().tgl || d.data().tanggal || "")) };
   const snapBeliDocs = snapBeliAll.docs.filter(d => filterByTgl(d.data().tanggal || ""));
@@ -2338,19 +2337,24 @@ let keuTahun = new Date().getFullYear();
 let keuWired = false;
 
 function getKeuRange(){
+  const toLocalDate = (d) => {
+    return d.getFullYear() + "-" + 
+      String(d.getMonth() + 1).padStart(2,"0") + "-" + 
+      String(d.getDate()).padStart(2,"0");
+  };
+  
   if(keuPeriod==="hari"){
-    const s=new Date();s.setHours(0,0,0,0);
-    const e=new Date();e.setHours(23,59,59,999);
-    return{s,e};
+    const s = new Date(); s.setHours(0,0,0,0);
+    const e = new Date(); e.setHours(23,59,59,999);
+    return { s: toLocalDate(s), e: toLocalDate(e) };
   } else if(keuPeriod==="7hari"){
-    const s=new Date();s.setDate(s.getDate()-6);s.setHours(0,0,0,0);
-    const e=new Date();e.setHours(23,59,59,999);
-    return{s,e};
+    const s = new Date(); s.setDate(s.getDate()-6); s.setHours(0,0,0,0);
+    const e = new Date(); e.setHours(23,59,59,999);
+    return { s: toLocalDate(s), e: toLocalDate(e) };
   } else if(keuPeriod==="bulan"){
-    return{
-      s:new Date(keuTahun,keuBulan,1),
-      e:new Date(keuTahun,keuBulan+1,0,23,59,59,999)
-    };
+    const s = new Date(keuTahun, keuBulan, 1);
+    const e = new Date(keuTahun, keuBulan + 1, 0, 23, 59, 59, 999);
+    return { s: toLocalDate(s), e: toLocalDate(e) };
   }
   return null;
 }
