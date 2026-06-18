@@ -3091,6 +3091,9 @@ async function loadKeuData(){
   el("keu-keluar").textContent = rp(modalBelanja);
   el("keu-profit-kotor").textContent = rp(surplusKas);
   el("keu-profit-bersih").textContent = rp(labaKotor);
+
+  console.log("✅ UI Updated - surplusKas:", surplusKas, "| labaKotor:", labaKotor);
+  console.log("✅ DOM check:", document.getElementById("keu-profit-kotor")?.textContent);
   
   el("keu-profit-kotor-stat").style.background = surplusKas >= 0 ? "#dcfce7" : "#fee2e2";
   el("keu-profit-kotor-stat").querySelector(".val").style.color = surplusKas >= 0 ? "var(--green)" : "var(--red)";
