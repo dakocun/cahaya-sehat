@@ -1332,6 +1332,62 @@ function renderItems(mode){
   hitungTotalJual(mode);
 }
 
+  // ── JASA ITEMS ───────────────────────────────────────────
+function renderJasa(mode){
+  const items=mode==="jual"?jasaItems:tesJasaItems;
+  const wrap=el(mode==="jual"?"jasa-wrap":"tes-jasa-wrap"); if(!wrap) return;
+  if(!items.length){
+    wrap.innerHTML='<div style="font-size:12px;color:var(--muted);padding:6px 0;margin-bottom:4px">Belum ada layanan</div>';
+    hitungTotalJual(mode); return;
+  }
+  wrap.innerHTML=items.map((item,i)=>{
+    const l=layananList.find(x=>x.id===item.id);
+    const strip=l?getStripObat(l.nama):null;
+    const stokS=strip?(strip.stok||0):null;
+    let stripInfo="";
+    if(strip){
+      if(stokS<=0) stripInfo=`<small style="color:var(--red);font-weight:600">⛔ Strip habis!</small>`;
+      else if(stokS<4) stripInfo=`<small style="color:var(--yellow);font-weight:600">⚠️ Strip: ${stokS}</small>`;
+      else stripInfo=`<small style="color:var(--muted)">✓ Strip: ${stokS}</small>`;
+    } else if(l && STRIP_MAP[l.nama.toUpperCase()]!==undefined){
+      stripInfo=`<small style="color:var(--red);font-weight:600">⛔ Strip belum ada!</small>`;
+    }
+    const harga=item.harga_override!=null?item.harga_override:(l?l.harga:0);
+    const isOverride=item.harga_override!=null;
+    const qty=item.qty||1;
+    return`<div class="item-row" data-jidx="${i}" style="gap:6px;align-items:center;flex-wrap:nowrap">
+      <div style="flex:2;font-size:13px;min-width:0">${l?"&#129657; "+esc(l.nama)+" "+stripInfo:"?"}</div>
+      <input type="number" class="jasa-qty-input" value="${qty}" min="1"
+        style="width:38px;padding:5px 4px;font-size:13px;text-align:center;border:1.5px solid var(--border);border-radius:6px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
+        <input type="number" class="jasa-harga-input" value="${harga}" min="0"
+          style="width:80px;padding:5px 6px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;color:var(--navy);font-weight:600;text-align:right">
+        <span class="jasa-harga-lbl" style="font-size:10px;color:var(--teal);flex-shrink:0">${isOverride?"✏️":"Rp"}</span>
+      </div>
+      <button class="btn btn-outline btn-sm del-jasa" style="flex-shrink:0;padding:5px 8px">&#10005;</button>
+    </div>`;
+  }).join("");
+
+  wrap.querySelectorAll(".item-row").forEach((row,i)=>{
+    const arr=mode==="jual"?jasaItems:tesJasaItems;
+    row.querySelector(".jasa-qty-input").addEventListener("input",function(){
+      arr[i].qty=parseInt(this.value)||1;
+      hitungTotalJual(mode);
+    });
+    row.querySelector(".jasa-harga-input").addEventListener("input",function(){
+      arr[i].harga_override=parseFloat(this.value)||0;
+      const lbl=row.querySelector(".jasa-harga-lbl");
+      if(lbl) lbl.textContent="✏️";
+      hitungTotalJual(mode);
+    });
+    row.querySelector(".del-jasa").addEventListener("click",()=>{
+      arr.splice(i,1);
+      renderJasa(mode);
+      hitungTotalJual(mode);
+    });
+  });
+  hitungTotalJual(mode);
+}
 
 function hitungTotalJual(mode){
   const obatArr=mode==="jual"?jualItems:tesItems;
@@ -1375,29 +1431,38 @@ function showJasaPicker(mode){
       } else if(needsStrip && !strip){
         warning=`<span style="color:var(--red);font-size:10px;display:block">⛔ Strip belum ada di stok</span>`;
       }
-      return `<button class="btn btn-outline btn-sm" style="margin:4px;display:inline-flex;flex-direction:column;align-items:flex-start;${habis?"opacity:.45;cursor:not-allowed;":""}text-align:left" data-li="${l.id}" ${habis?"disabled":""}>
-        <span>${esc(l.nama)} &mdash; ${rp(l.harga)}</span>
+      return `<button class="btn btn-outline btn-sm layanan-pick-btn" style="margin:4px;display:block;width:100%;text-align:left;${habis?"opacity:.45;cursor:not-allowed;":""}" data-li="${l.id}" ${habis?"disabled":""}>
+        ${esc(l.nama)} &mdash; ${rp(l.harga)}
         ${warning}
       </button>`;
     }).join("")}</div>
     <button class="btn btn-outline btn-sm" style="margin-top:12px" id="jasa-picker-close">Batal</button>
   </div>`;
   document.body.appendChild(picker);
-  picker.querySelectorAll("[data-li]").forEach(btn=>{
+  
+  picker.querySelectorAll(".layanan-pick-btn").forEach(btn=>{
     btn.addEventListener("click",()=>{
       const newId=btn.dataset.li;
       const dupIdx=arr.findIndex(it=>it.id===newId);
       if(dupIdx!==-1){
         arr[dupIdx].qty=(arr[dupIdx].qty||1)+1;
-        renderJasa(mode);
       } else {
         arr.push({id:newId,harga_override:null,qty:1});
-        renderJasa(mode);
       }
+      renderJasa(mode);
+      hitungTotalJual(mode);
       document.body.removeChild(picker);
     });
   });
-  document.getElementById("jasa-picker-close").addEventListener("click",()=>document.body.removeChild(picker));
+  
+  document.getElementById("jasa-picker-close").addEventListener("click",()=>{
+    document.body.removeChild(picker);
+  });
+  
+  // Close on click outside
+  picker.addEventListener("click", function(e){
+    if(e.target === picker) document.body.removeChild(picker);
+  });
 }
 
 el("btn-tambah-jual").addEventListener("click",()=>{jualItems.push({id:"",qty:1});renderItems("jual");});
