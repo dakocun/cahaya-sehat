@@ -1885,7 +1885,6 @@ async function loadRekapData(){
   const snapBeliDocs = snapBeliAll.docs.filter(d => filterByTgl(d.data().tanggal || ""));
 
   // Rekap penjualan
-  const snapJual = await getDocs(qJual);
   let omzet=0, untung=0;
   const rowsJual = snapJual.docs.map(d=>{
     const dt=d.data();
