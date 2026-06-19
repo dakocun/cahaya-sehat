@@ -755,10 +755,10 @@ function renderTblStok(){
         
         html += `<tr>
           ${idx === 0 ? `<td rowspan="${rowspan}" style="vertical-align:middle"><strong>${esc(o.nama)}</strong></td>
-          <td rowspan="${rowspan}" style="vertical-align:middle">${esc(o.satuan||"-")}</td>
-          <td rowspan="${rowspan}" style="vertical-align:middle">${rp(o.harga_beli)}</td>
-          <td rowspan="${rowspan}" style="vertical-align:middle">${hargajual}</td>` : ''}
+          <td rowspan="${rowspan}" style="vertical-align:middle">${esc(o.satuan||"-")}</td>` : ''}
           <td style="font-weight:600">${s}</td>
+          ${idx === 0 ? `<td rowspan="${rowspan}" style="vertical-align:middle">${rp(o.harga_beli)}</td>
+          <td rowspan="${rowspan}" style="vertical-align:middle">${hargajual}</td>` : ''}
           <td style="font-size:11px">${expHtml}</td>
           ${idx === 0 ? `<td rowspan="${rowspan}" style="vertical-align:middle"><span class="badge ${clsTotal}">${lblTotal}</span></td>` : ''}
         </tr>`;
