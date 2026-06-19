@@ -520,61 +520,6 @@ tr.separator:hover td{background:var(--navy)!important}
   </div>
 </div>
 
-<!-- MODAL EDIT BELANJA -->
-<div id="modal-edit-beli" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
-  <div style="background:#fff;border-radius:14px;padding:24px;max-width:520px;width:100%;margin:auto">
-    <h3 style="color:var(--navy);margin-bottom:16px">&#9998; Edit Belanja</h3>
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="field" style="margin-bottom:0"><label>Tanggal</label><input id="edit-beli-tgl" type="date"></div>
-      <div class="field" style="margin-bottom:0"><label>Keterangan</label><input id="edit-beli-ket" type="text"></div>
-    </div>
-    <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">Item Belanja</div>
-    <div id="edit-beli-items"></div>
-    <div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:12px;display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:13px;color:var(--muted)">Total Baru</span>
-      <span style="font-size:18px;font-weight:700;color:var(--navy)" id="edit-beli-total">Rp 0</span>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:16px">
-      <button id="btn-simpan-edit-beli" class="btn btn-teal" style="flex:1">&#128190; Simpan Perubahan</button>
-      <button id="btn-batal-edit-beli" class="btn btn-outline">Batal</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL EDIT TRANSAKSI -->
-<div id="modal-edit-trx" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
-  <div style="background:#fff;border-radius:14px;padding:24px;max-width:480px;width:100%;margin:auto">
-    <h3 style="color:var(--navy);margin-bottom:4px">&#9998; Edit Transaksi</h3>
-    <div id="edit-trx-id-label" style="font-size:11px;color:var(--muted);margin-bottom:16px"></div>
-
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="field" style="margin-bottom:0">
-        <label>Tanggal</label>
-        <input id="edit-trx-tgl" type="date">
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <label>Nama Pembeli</label>
-        <input id="edit-trx-pembeli" type="text">
-      </div>
-    </div>
-
-    <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">Item Transaksi</div>
-    <div id="edit-trx-items"></div>
-
-    <div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:13px;color:var(--muted)">Total Baru</span>
-        <span style="font-size:18px;font-weight:700;color:var(--navy)" id="edit-trx-total">Rp 0</span>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:10px;margin-top:16px">
-      <button id="btn-simpan-edit-trx" class="btn btn-teal" style="flex:1">&#128190; Simpan Perubahan</button>
-      <button id="btn-batal-edit-trx" class="btn btn-outline">Batal</button>
-    </div>
-  </div>
-</div>
-
 <!-- NOTA OVERLAY -->
 <div id="overlay">
   <div class="nota-box">
@@ -2293,7 +2238,6 @@ const filterByTgl = (tgl) => {
       <td style="color:var(--green)">${rp(dt.untung)}</td>
       <td style="display:flex;gap:4px;flex-wrap:wrap">
         <button class="btn btn-outline btn-sm" data-cetak="${d.id}" title="Cetak">&#128424;</button>
-        <button class="btn btn-outline btn-sm" data-edit-trx="${d.id}" title="Edit" style="border-color:var(--teal);color:var(--teal)">&#9998;</button>
         <button class="btn btn-red btn-sm" data-hapus-trx="${d.id}" title="Hapus">&#128465;</button>
       </td>
     </tr>`;
@@ -2306,9 +2250,6 @@ const filterByTgl = (tgl) => {
     : '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada transaksi</td></tr>';
   tbJual.querySelectorAll("[data-cetak]").forEach(btn=>{
     btn.addEventListener("click",()=>cetakUlang(btn.dataset.cetak));
-  });
-  tbJual.querySelectorAll("[data-edit-trx]").forEach(btn=>{
-    btn.addEventListener("click",()=>editTrx(btn.dataset.editTrx));
   });
   tbJual.querySelectorAll("[data-hapus-trx]").forEach(btn=>{
     btn.addEventListener("click",()=>hapusTrx(btn.dataset.hapusTrx));
@@ -2352,131 +2293,6 @@ async function cetakUlang(id){
   tampilkanNota(dt.items,dt.total,id,false,dt.pembeli||"",dt.diskon||0,dt.subtotal||dt.total,dt.bayar||"TUNAI",dt.kembalian??null);
 }
 
-let editTrxData = null; // {id, items, originalItems}
-
-async function editTrx(id){
-  const snap = await getDoc(doc(db,C_TRX,id));
-  if(!snap.exists()){ toast("Data tidak ditemukan"); return; }
-  const dt = snap.data();
-
-  // Simpan state asli untuk kalkulasi diff stok
-  editTrxData = {
-    id,
-    originalItems: JSON.parse(JSON.stringify(dt.items||[])),
-    items: JSON.parse(JSON.stringify(dt.items||[]))
-  };
-
-  el("edit-trx-id-label").textContent = "No: " + id.slice(-8).toUpperCase() + " | " + (dt.waktu?.toDate().toLocaleDateString("id-ID")||"-");
-  el("edit-trx-tgl").value = dt.tgl || dt.waktu?.toDate().toISOString().split("T")[0] || "";
-  el("edit-trx-pembeli").value = dt.pembeli||"";
-
-  renderEditItems();
-  el("modal-edit-trx").style.display = "flex";
-}
-
-function renderEditItems(){
-  if(!editTrxData) return;
-  const wrap = el("edit-trx-items");
-  wrap.innerHTML = editTrxData.items.map((item,i) => `
-    <div style="display:flex;gap:6px;align-items:center;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:6px" data-eidx="${i}">
-      <div style="flex:2;font-size:13px;font-weight:500">${esc(item.nama)}<br><small style="color:var(--muted)">${item.tipe==="jasa"?"Layanan":"Obat"}</small></div>
-      <input type="number" class="edit-qty" value="${item.qty||1}" min="1"
-        style="width:50px;padding:5px;font-size:13px;border:1.5px solid var(--border);border-radius:6px;text-align:center">
-      <input type="number" class="edit-hjual" value="${item.harga_jual||0}" min="0"
-        style="width:85px;padding:5px;font-size:12px;border:1.5px solid var(--border);border-radius:6px;text-align:right">
-      <button class="btn btn-red btn-sm del-edit-item" style="padding:4px 8px">&#10005;</button>
-    </div>`
-  ).join("");
-
-  // Wire
-  wrap.querySelectorAll("[data-eidx]").forEach(row => {
-    const i = parseInt(row.dataset.eidx);
-    row.querySelector(".edit-qty").addEventListener("input", function(){
-      editTrxData.items[i].qty = parseInt(this.value)||1;
-      hitungEditTotal();
-    });
-    row.querySelector(".edit-hjual").addEventListener("input", function(){
-      editTrxData.items[i].harga_jual = parseFloat(this.value)||0;
-      editTrxData.items[i].subtotal = editTrxData.items[i].harga_jual * editTrxData.items[i].qty;
-      hitungEditTotal();
-    });
-    row.querySelector(".del-edit-item").addEventListener("click", ()=>{
-      editTrxData.items.splice(i,1);
-      renderEditItems();
-    });
-  });
-  hitungEditTotal();
-}
-
-function hitungEditTotal(){
-  let total = 0;
-  (editTrxData?.items||[]).forEach(it=>{
-    total += (it.harga_jual||0) * (it.qty||1);
-  });
-  el("edit-trx-total").textContent = rp(total);
-}
-
-el("btn-batal-edit-trx").addEventListener("click",()=>{
-  el("modal-edit-trx").style.display="none";
-  editTrxData=null;
-});
-
-el("btn-simpan-edit-trx").addEventListener("click", async ()=>{
-  const btn = el("btn-simpan-edit-trx");
-  btnLoading(btn, true);
-  
-  if(!editTrxData){ return; }
-  const {id, originalItems, items} = editTrxData;
-  const tgl = el("edit-trx-tgl").value;
-  const pembeli = el("edit-trx-pembeli").value.trim();
-
-  // Hitung diff stok: originalItems vs items baru
-  // Obat: jika qty berkurang → kembalikan ke stok; jika bertambah → kurangi dari stok
-  const obatMap = {};
-  originalItems.forEach(it=>{
-    if(it.tipe==="jasa") return;
-    obatMap[it.nama] = obatMap[it.nama] || 0;
-    obatMap[it.nama] -= (it.qty||1); // sudah keluar
-  });
-  items.forEach(it=>{
-    if(it.tipe==="jasa") return;
-    obatMap[it.nama] = obatMap[it.nama] || 0;
-    obatMap[it.nama] += (it.qty||1); // akan keluar
-  });
-  // Terapkan diff ke stok (negatif = kembalikan, positif = kurangi lagi)
-  for(const [nama, diff] of Object.entries(obatMap)){
-    if(diff===0) continue;
-    const namaBersih = (nama||"").trim().replace(/\s+/g,' ').toUpperCase();
-    const obat = stokList.find(o=>(o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===namaBersih);
-    if(obat) {
-      await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(-diff)});
-      console.log(`✅ Edit stok: ${obat.nama} diff=${-diff}`);
-    } else {
-      console.log(`⚠️ Obat tidak ditemukan: ${nama}`);
-    }
-  }
-
-  // Hitung total & untung baru
-  let total=0, untung=0;
-  items.forEach(it=>{
-    it.subtotal = (it.harga_jual||0)*(it.qty||1);
-    total += it.subtotal;
-    untung += (it.subtotal - (it.harga_beli||0)*(it.qty||1));
-  });
-
-  // Update Firestore
-  await updateDoc(doc(db,C_TRX,id),{
-    items, total, untung, tgl, pembeli,
-    updated: Timestamp.now()
-  });
-
-  toast("Transaksi diperbarui!");
-  el("modal-edit-trx").style.display="none";
-  editTrxData=null;
-  await loadStok();
-  loadRekapData();
-});
-
 async function hapusTrx(id){
   if(!confirm("Hapus transaksi ini? Stok akan dikembalikan.")) return;
   const snap=await getDoc(doc(db,C_TRX,id));
@@ -2490,11 +2306,9 @@ async function hapusTrx(id){
     const namaBersih = (item.nama||"").trim().replace(/\s+/g,' ').toUpperCase();
     const obatId2=item.obatId||stokList.find(o=>(o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===namaBersih)?.id;
     if(obatId2){
-      const bUpdate={stok:increment(item.qty||1)};
-      if(item.batchId&&item.batchId!=="__all__"){
-        const ob=stokList.find(x=>x.id===obatId2);
-        if(ob?.batches?.[item.batchId]!=null)
-          bUpdate["batches."+item.batchId+".qty"]=increment(item.qty||1);
+      const bUpdate = { stok: increment(item.qty||1) };
+      if(item.batchId && item.batchId !== "__all__"){
+        bUpdate["batches."+item.batchId+".qty"] = increment(item.qty||1);
       }
       await updateDoc(doc(db,C_OBAT,obatId2),bUpdate);
     }
