@@ -1724,9 +1724,6 @@ el("btn-proses-tes").addEventListener("click",()=>{
 function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,bayar="TUNAI",kembalian=null,tglManual=null){
   let tgl;
   if(tglManual){
-    // Tanggal manual - tanpa jam
-  let tgl;
-  if(tglManual){
     // Tanggal manual (bukan hari ini) → tanpa jam
     const d = new Date(tglManual + "T00:00:00");
     tgl = d.toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
