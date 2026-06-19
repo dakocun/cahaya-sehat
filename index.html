@@ -223,6 +223,13 @@ tr.separator:hover td{background:var(--navy)!important}
     </div>
     <div id="gc-strip-info" style="font-size:12px;color:var(--muted);margin-bottom:8px"></div>
     <button id="btn-simpan-gc" class="btn btn-red">💾 Simpan Gagal Cek</button>
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+      <h3 style="font-size:14px;color:var(--navy);margin-bottom:8px">📋 Riwayat Gagal Cek</h3>
+      <table>
+        <thead><tr><th>Tgl</th><th>Layanan</th><th>Jml</th><th>Keterangan</th></tr></thead>
+        <tbody id="tb-gagal-cek"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -1042,6 +1049,7 @@ async function loadLayanan(){
   layananList=snap.docs.map(d=>({id:d.id,...d.data()}));
   renderTblLayanan();
   initGagalCek();
+  loadGagalCek(); // ⬅ TAMBAH
   return layananList;
 }
 
@@ -1151,6 +1159,31 @@ function initGagalCek(){
   el("gc-strip-info").textContent = "";
 }
 
+async function loadGagalCek(){
+  const tb = el("tb-gagal-cek");
+  if(!tb) return;
+  
+  try {
+    const snap = await getDocs(query(collection(db, C_GAGAL), orderBy("waktu", "desc")));
+    if(snap.empty){
+      tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Belum ada data</td></tr>';
+      return;
+    }
+    tb.innerHTML = snap.docs.map(d => {
+      const dt = d.data();
+      const tgl = dt.tgl || dt.waktu?.toDate().toISOString().split("T")[0] || "-";
+      return `<tr>
+        <td style="font-size:12px">${tgl}</td>
+        <td>${esc(dt.layanan||"-")}</td>
+        <td style="font-weight:600;color:var(--red)">-${dt.qty||0}</td>
+        <td style="font-size:12px">${esc(dt.keterangan||"-")}</td>
+      </tr>`;
+    }).join("");
+  } catch(e) {
+    tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Error</td></tr>';
+  }
+}
+  
 el("gc-layanan")?.addEventListener("change", function(){
   const l = layananList.find(x => x.id === this.value);
   if(!l){ el("gc-strip-info").textContent = ""; return; }
@@ -1203,6 +1236,7 @@ el("btn-simpan-gc")?.addEventListener("click", async ()=>{
   
   toast(`✅ Gagal cek dicatat: ${l.nama} -${qty} strip`);
   initGagalCek();
+  loadGagalCek(); // ⬅ TAMBAH
   await loadStok();
   await loadLayanan(); // ⬅ TAMBAH
   btnLoading(btn, false);
