@@ -2211,7 +2211,7 @@ async function loadDashTren(){
   tbTren.innerHTML=trenArr.slice(0,10).map(t=>`<tr>
     <td>${t.tipe==="jasa"?"&#129657; ":""}${esc(t.nama)}</td>
     <td style="text-align:center;font-weight:600">${t.qty}</td>
-    <td>${rp(t.omzet)}</td>
+    <td style="text-align:right">${rp(t.omzet)}</td>
   </tr>`).join("") || '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Belum ada data</td></tr>';
 }
   
