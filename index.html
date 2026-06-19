@@ -2062,7 +2062,10 @@ async function cetakUlang(id){
   const snap=await getDoc(doc(db,C_TRX,id));
   if(!snap.exists()){toast("Data tidak ditemukan");return;}
   const dt=snap.data();
-  tampilkanNota(dt.items,dt.total,id,false,dt.pembeli||"",dt.diskon||0,dt.subtotal||dt.total,dt.bayar||"TUNAI",dt.kembalian??null);
+  const tglSimpan = dt.tgl || dt.tanggal || "";
+  const todayStr = new Date().getFullYear() + "-" + String(new Date().getMonth()+1).padStart(2,"0") + "-" + String(new Date().getDate()).padStart(2,"0");
+  const tglManual = tglSimpan && tglSimpan !== todayStr ? tglSimpan : null;
+  tampilkanNota(dt.items,dt.total,id,false,dt.pembeli||"",dt.diskon||0,dt.subtotal||dt.total,dt.bayar||"TUNAI",dt.kembalian??null,tglManual);
 }
 
 async function hapusTrx(id){
