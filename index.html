@@ -549,6 +549,11 @@ const db = getFirestore(initializeApp({
   appId:"1:847897389700:web:cc6e2bf3633f67c1dfb0d1"
 }));
 
+function todayLocal(){
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split("T")[0];
+}
 
 function formatTgl(tglStr){
   if(!tglStr || tglStr === "-") return "-";
@@ -640,14 +645,14 @@ function showPage(id){
   if(id==="stok")      loadStok();
   if(id==="layanan")   loadLayanan();
   if(id==="jual"){
-    if(!el("jual-tgl").value){ el("jual-tgl").value=new Date().toISOString().split("T")[0]; }
+    if(!el("jual-tgl").value){ el("jual-tgl").value = todayLocal(); }
     Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("jual");renderJasa("jual");});
   }
   if(id==="belanja")   { loadStok(); resetBelanjaForm(); }
   if(id==="rekap")     loadRekap();
   if(id==="keuangan")  loadKeuangan();
   if(id==="tes-nota"){
-    if(!el("tes-tgl").value){ el("tes-tgl").value=new Date().toISOString().split("T")[0]; }
+    if(!el("tes-tgl").value){ el("tes-tgl").value = todayLocal(); }
     Promise.all([loadStok(),loadLayanan()]).then(()=>{renderItems("tes");renderJasa("tes");});
   }
 }
@@ -1108,7 +1113,7 @@ function initGagalCek(){
     layananList.filter(l => LAYANAN_STRIP.includes(l.nama.toUpperCase()))
       .map(l => `<option value="${l.id}">${esc(l.nama)}</option>`).join("");
   
-  el("gc-tgl").value = new Date().toISOString().split("T")[0];
+  el("gc-tgl").value = todayLocal();
   el("gc-qty").value = 1;
   el("gc-ket").value = "";
   el("gc-strip-info").textContent = "";
@@ -1201,7 +1206,7 @@ el("btn-simpan-gc")?.addEventListener("click", async ()=>{
 function resetBelanjaForm(){
   belanjaItems=[{nama:"",satuan:"",qty:1,harga_beli_total:0,harga_beli:0,harga_jual:0,exp:""}];
   const today=new Date().toISOString().split("T")[0];
-  el("b-tgl").value=today;
+  el("b-tgl").value = todayLocal();
   el("b-ket").value="";
   renderBelanjaItems();
 }
@@ -2588,7 +2593,7 @@ async function loadKeuangan(){
 
     // Modal tambah modal
     el("btn-tambah-modal").addEventListener("click",()=>{
-      el("modal-tgl").value=new Date().toISOString().split("T")[0];
+      el("modal-tgl").value=todayLocal();
       el("modal-jml").value="";el("modal-ket").value="";
       el("modal-modal").style.display="flex";
     });
@@ -2609,7 +2614,7 @@ async function loadKeuangan(){
 
     // Modal tarik saldo
     el("btn-tarik-saldo").addEventListener("click",()=>{
-      el("tarik-tgl").value=new Date().toISOString().split("T")[0];
+      el("tarik-tgl").value=todayLocal();
       el("tarik-jml").value="";el("tarik-ket").value="";
       el("modal-tarik").style.display="flex";
     });
