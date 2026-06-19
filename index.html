@@ -605,6 +605,16 @@ const db = getFirestore(initializeApp({
 }));
 
 
+function formatTgl(tglStr){
+  if(!tglStr || tglStr === "-") return "-";
+  const parts = tglStr.split("-"); // "2026-06-19"
+  if(parts.length !== 3) return tglStr;
+  const bulan = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+  const bln = bulan[parseInt(parts[1])-1] || parts[1];
+  return parts[2] + " " + bln + " " + parts[0];
+}
+  
+
 function validasiBayar(mode){
   const wrap = el(mode+"-bayar-btns");
   const metode = wrap?.dataset.selected || "TUNAI";
@@ -2302,7 +2312,7 @@ const filterByTgl = (tgl) => {
     const itemStr = dt.items?.map(i => esc(i.nama) + " x" + i.qty).join(", ") || "-";
     totalBeli += dt.total || 0;
     return `<tr>
-      <td style="white-space:nowrap;font-size:13px;font-weight:500">${dt.tanggal || "-"}</td>
+      <td style="white-space:nowrap;font-size:13px;font-weight:500">${formatTgl(dt.tanggal)}</td>
       <td style="font-size:12px">${esc(dt.keterangan || "-")}</td>
       <td style="font-size:12px">${itemStr}</td>
       <td style="white-space:nowrap;font-size:14px;font-weight:600">${rp(dt.total)}</td>
@@ -3337,7 +3347,7 @@ async function loadKeuData(){
       : `<span style="font-size:10px;color:var(--muted)">otomatis</span>`;
     return `<tr>
       <td style="font-size:12px;color:var(--muted)">${i+1}</td>
-      <td style="font-size:12px">${row.tgl}</td>
+      <td style="font-size:12px">${formatTgl(row.tgl)}</td>
       <td style="font-size:12px;font-weight:600;${jenisColor}">${row.jenis}</td>
       <td style="font-size:11px;color:var(--muted)">${row.nota}${row.ket ? ` <span style="color:var(--text)">${esc(row.ket)}</span>` : ""}</td>
       <td style="text-align:right">${masukCell}</td>
