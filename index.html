@@ -2949,12 +2949,16 @@ async function loadKeuData(){
     const jenisColor = row.jenis === "Penjualan" ? "color:var(--teal)" : row.jenis === "Belanja" ? "color:var(--red)" : row.jenis === "Tambah Modal" ? "color:var(--green)" : "color:var(--yellow)";
     const hapusBtn = row.src === "keu"
       ? `<button class="btn btn-red btn-sm" data-hapus-keu="${row.id}" title="Hapus">&#128465;</button>`
-      : `<span style="font-size:10px;color:var(--muted)">otomatis</span>`;
+      :``;
     return `<tr>
       <td style="font-size:12px;color:var(--muted)">${i+1}</td>
       <td style="font-size:12px">${formatTgl(row.tgl)}</td>
       <td style="font-size:12px;font-weight:600;${jenisColor}">${row.jenis}</td>
-      <td style="font-size:11px;color:var(--muted)">${row.nota}${row.ket ? ` <span style="color:var(--text)">${esc(row.ket)}</span>` : ""}</td>
+      <td style="font-size:11px;color:var(--muted)">
+        ${row.src==="trx" ? row.nota + (row.ket ? " - " + esc(row.ket.toUpperCase()) : "") :
+          row.src==="beli" ? (row.ket ? row.nota + " - " + esc(row.ket.toUpperCase()) : row.nota) :
+          row.nota}
+      </td>
       <td style="text-align:right">${masukCell}</td>
       <td style="text-align:right">${keluarCell}</td>
       <td>${hapusBtn}</td>
