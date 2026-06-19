@@ -1909,9 +1909,18 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
     const l=layananList.find(x=>x.id===item.id);
     const hJasa=item.harga_override!=null?item.harga_override:(l.harga||0);
     const qJasa=item.qty||1;
-    total+=hJasa*qJasa;untung+=hJasa*qJasa;
-    return{tipe:"jasa",nama:l.nama,satuan:"layanan",qty:qJasa,harga_jual:hJasa,harga_beli:0,subtotal:hJasa*qJasa};
+    
+    // Hitung harga beli strip (jika ada)
+    const strip=getStripObat(l.nama);
+    const hbeliStrip = strip ? (strip.harga_beli||0) : 0;
+    const untungJasa = (hJasa - hbeliStrip) * qJasa;
+    
+    total+=hJasa*qJasa;
+    untung+=untungJasa;
+    
+    return{tipe:"jasa",nama:l.nama,satuan:"layanan",qty:qJasa,harga_jual:hJasa,harga_beli:hbeliStrip,subtotal:hJasa*qJasa};
   });
+  
   const detail=[...detailObat,...detailJasa];
   for(const item of detailObat){
     const o=stokList.find(x=>x.id===item.obatId); if(!o) continue;
