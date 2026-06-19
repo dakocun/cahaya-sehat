@@ -359,10 +359,10 @@ tr.separator:hover td{background:var(--navy)!important}
       <table>
         <thead>
           <tr>
-            <th style="padding:10px 10px">No</th>
-            <th>Tanggal</th>
-            <th>Jenis</th>
-            <th>No. Nota / Ket</th>
+            <th style="text-align:center">>No</th>
+            <th style="text-align:center">Tanggal</th>
+            <th style="text-align:center">Jenis</th>
+            <th style="text-align:center">No. Nota / Ket</th>
             <th style="text-align:center">Uang Masuk</th>
             <th style="text-align:center">Uang Keluar</th>
             <th></th>
@@ -2954,9 +2954,9 @@ async function loadKeuData(){
       ? `<button class="btn btn-red btn-sm" data-hapus-keu="${row.id}" title="Hapus">&#128465;</button>`
       :``;
     return `<tr>
-      <td style="font-size:12px;color:var(--muted)">${i+1}</td>
-      <td style="font-size:12px">${formatTgl(row.tgl)}</td>
-      <td style="font-size:12px;font-weight:600;${jenisColor}">${row.jenis}</td>
+      <td style="font-size:12px;color:var(--muted);text-align:center">${i+1}</td>
+      <td style="font-size:12px;text-align:center">${formatTgl(row.tgl)}</td>
+      <td style="font-size:12px;font-weight:600;${jenisColor};text-align:center">${row.jenis}</td>
       <td style="font-size:11px;color:var(--muted)">
         ${row.src==="trx" ? row.nota + (row.ket ? " - " + esc(row.ket.toUpperCase()) : "") :
           row.src==="beli" ? (row.ket ? esc(row.ket.toUpperCase()) : row.nota) :
