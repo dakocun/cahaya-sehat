@@ -1808,10 +1808,10 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   const btn = el("btn-proses-jual"); // ⬅ TAMBAH
   btnLoading(btn, true); // ⬅ TAMBAH
   
-  if(!validasiBayar("jual")) return; // ⬅ TAMBAH
+  if(!validasiBayar("jual")) { btnLoading(btn, false); return; } // ⬅ TAMBAH
   const validObat=jualItems.filter(i=>i.id);
   const validJasa=jasaItems.filter(i=>i.id);
-  if(!validObat.length&&!validJasa.length){toast("Pilih minimal 1 obat atau layanan");return;}
+  if(!validObat.length&&!validJasa.length){toast("Pilih minimal 1 obat atau layanan");btnLoading(btn, false);return;}
   const pembeli=el("jual-pembeli").value.trim();
   const diskon=parseFloat(el("jual-diskon").value)||0;
   const tglInput=el("jual-tgl").value;
