@@ -361,8 +361,8 @@ tr.separator:hover td{background:var(--navy)!important}
             <th>Tanggal</th>
             <th>Jenis</th>
             <th>No. Nota / Ket</th>
-            <th style="text-align:right">Uang Masuk</th>
-            <th style="text-align:right">Uang Keluar</th>
+            <th style="text-align:center">Uang Masuk</th>
+            <th style="text-align:center">Uang Keluar</th>
             <th></th>
           </tr>
         </thead>
@@ -2795,26 +2795,27 @@ function filterTblStok(keyword){
   
   const rows = tb.querySelectorAll("tr");
   let found = 0;
+  
   rows.forEach(row => {
+    // Skip separator
+    if(row.classList.contains("separator")){
+      row.style.display = keyword ? "none" : "";
+      return;
+    }
+    
     const namaCell = row.querySelector("td:first-child strong");
-    if(!namaCell) return;
+    if(!namaCell){
+      // Baris lanjutan rowspan — ikut disembunyikan kalau keyword tidak match
+      if(keyword && found === 0) row.style.display = "none";
+      else row.style.display = "";
+      return;
+    }
+    
     const nama = namaCell.textContent.toUpperCase();
-    const match = nama.includes(keyword);
+    const match = !keyword || nama.includes(keyword);
     row.style.display = match ? "" : "none";
     if(match) found++;
   });
-  
-  // Update info hasil pencarian (opsional)
-  const existingInfo = document.getElementById("stok-search-info");
-  if(existingInfo) existingInfo.remove();
-  
-  if(keyword && found === 0){
-    const info = document.createElement("div");
-    info.id = "stok-search-info";
-    info.style.cssText = "text-align:center;color:var(--muted);font-size:12px;padding:8px";
-    info.textContent = "Tidak ada obat dengan nama \"" + keyword + "\"";
-    tb.parentNode.appendChild(info);
-  }
 }
 
 
