@@ -1903,6 +1903,10 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   tampilkanNota(detail,totalBayar,ref.id,false,pembeli,isPribadi?0:diskon,total,bayar,kembalian,tglManual);
   jualItems=[{id:"",qty:1}];jasaItems=[];
   el("jual-pembeli").value="";el("jual-diskon").value="";
+
+  renderItems("jual"); // ⬅ TAMBAH
+  renderJasa("jual");  // ⬅ TAMBAH
+  
   // Reset bayar
   // Re-trigger TUNAI
   const tunaiBtn=el("jual-bayar-btns").querySelector('[data-bayar="TUNAI"]');
