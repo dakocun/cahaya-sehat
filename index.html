@@ -110,9 +110,9 @@ tr.separator:hover td{background:var(--navy)!important}
   <!-- Filter periode -->
   <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
     <span style="font-size:12px;color:var(--muted);font-weight:500">Tren:</span>
-    <button class="btn btn-navy btn-sm dash-period active-period" data-dp="minggu">Minggu Ini</button>
-    <button class="btn btn-outline btn-sm dash-period" data-dp="bulan">Bulan Ini</button>
-    <button class="btn btn-outline btn-sm dash-period" data-dp="semua">Keseluruhan</button>
+  <button class="btn btn-outline btn-sm dash-period" data-dp="minggu">Minggu Ini</button>
+  <button class="btn btn-outline btn-sm dash-period" data-dp="bulan">Bulan Ini</button>
+  <button class="btn btn-navy btn-sm dash-period active-period" data-dp="semua">Keseluruhan</button>
   </div>
 
   <!-- Tren produk -->
@@ -2108,7 +2108,7 @@ async function hapusTrx(id){
 }
 
 // ── DASHBOARD ────────────────────────────────────────────
-let dashPeriod="hari";
+let dashPeriod="semua";
 let dashBulan=new Date().getMonth();
 let dashTahun=new Date().getFullYear();
 let dashPeriodWired=false;
@@ -2944,8 +2944,8 @@ async function loadKeuData(){
   let totalMasuk = 0, totalKeluar = 0;
   tb.innerHTML = rows.map((row,i) => {
     totalMasuk += row.masuk; totalKeluar += row.keluar;
-    const masukCell=row.masuk>0?`<span style="color:var(--teal);font-weight:600">${rp(row.masuk)}</span>`:`<span style="color:var(--muted);display:block;text-align:center">-</span>`;
-    const keluarCell=row.keluar>0?`<span style="color:var(--red);font-weight:600">${rp(row.keluar)}</span>`:`<span style="color:var(--muted);display:block;text-align:center">-</span>`;
+    const masukCell=row.masuk>0?`<span style="color:var(--teal);font-weight:600">${rp(row.masuk)}</span>`:`<span style="color:var(--muted)">-</span>`;
+    const keluarCell=row.keluar>0?`<span style="color:var(--red);font-weight:600">${rp(row.keluar)}</span>`:`<span style="color:var(--muted)">-</span>`;
     const jenisColor = row.jenis === "Penjualan" ? "color:var(--teal)" : row.jenis === "Belanja" ? "color:var(--red)" : row.jenis === "Tambah Modal" ? "color:var(--green)" : "color:var(--yellow)";
     const hapusBtn = row.src === "keu"
       ? `<button class="btn btn-red btn-sm" data-hapus-keu="${row.id}" title="Hapus">&#128465;</button>`
@@ -2959,8 +2959,8 @@ async function loadKeuData(){
           row.src==="beli" ? (row.ket ? esc(row.ket.toUpperCase()) : row.nota) :
           row.nota}
       </td>
-      <td style="text-align:right">${masukCell}</td>
-      <td style="text-align:right">${keluarCell}</td>
+      <td style="text-align:${row.masuk>0?'right':'center'}">${masukCell}</td>
+      <td style="text-align:${row.keluar>0?'right':'center'}">${keluarCell}</td>
       <td>${hapusBtn}</td>
     </tr>`;
   }).join("");
