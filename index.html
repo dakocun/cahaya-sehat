@@ -1203,7 +1203,8 @@ el("btn-simpan-gc")?.addEventListener("click", async ()=>{
   
   toast(`✅ Gagal cek dicatat: ${l.nama} -${qty} strip`);
   initGagalCek();
-  loadStok();
+  await loadStok();
+  await loadLayanan(); // ⬅ TAMBAH
   btnLoading(btn, false);
 });
 
@@ -1913,6 +1914,7 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   if(tunaiBtn) tunaiBtn.click();
   hitungTotalJual("jual");
   loadStok();
+  await loadLayanan(); // ⬅ TAMBAH - refresh data layanan
   btnLoading(btn, false); // ⬅ TAMBAH DI AKHIR (sebelum tutup })
 });
 
