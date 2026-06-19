@@ -2956,7 +2956,7 @@ async function loadKeuData(){
       <td style="font-size:12px;font-weight:600;${jenisColor}">${row.jenis}</td>
       <td style="font-size:11px;color:var(--muted)">
         ${row.src==="trx" ? row.nota + (row.ket ? " - " + esc(row.ket.toUpperCase()) : "") :
-          row.src==="beli" ? (row.ket ? row.nota + " - " + esc(row.ket.toUpperCase()) : row.nota) :
+          row.src==="beli" ? (row.ket ? esc(row.ket.toUpperCase()) : row.nota) :
           row.nota}
       </td>
       <td style="text-align:right">${masukCell}</td>
