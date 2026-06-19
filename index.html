@@ -1850,12 +1850,16 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   }
   let total=0,untung=0;
   const detailObat=validObat.map(item=>{
-    const o=stokList.find(x=>x.id===item.id);
-    const hjual=hargaJualEfektif(item); // pakai harga manual jika ada
-    const sub=hjual*item.qty,pft=(hjual-o.harga_beli)*item.qty;
+    const {obatId,batchId,expKey}=parseItemId(item.id);
+    const o=stokList.find(x=>x.id===obatId);
+    if(!o){ toast("Obat tidak ditemukan: "+obatId); return null; }
+    const hjual=hargaJualEfektif(item);
+    const hbeli=o.harga_beli||0;
+    const sub=hjual*item.qty;
+    const pft=(hjual-hbeli)*item.qty;
     total+=sub;untung+=pft;
-    return{tipe:"obat",nama:o.nama,satuan:o.satuan,qty:item.qty,harga_jual:hjual,harga_beli:o.harga_beli,subtotal:sub};
-  });
+    return{tipe:"obat",obatId,batchId,expKey,nama:o.nama,satuan:o.satuan,qty:item.qty,harga_jual:hjual,harga_beli:hbeli,subtotal:sub};
+  }).filter(Boolean); // ⬅ buang null
   const detailJasa=validJasa.map(item=>{
     const l=layananList.find(x=>x.id===item.id);
     const hJasa=item.harga_override!=null?item.harga_override:(l.harga||0);
