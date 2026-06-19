@@ -1586,7 +1586,8 @@ el("btn-proses-jual").addEventListener("click", async ()=>{
   const diskon=parseFloat(el("jual-diskon").value)||0;
   const tglInput=el("jual-tgl").value;
   const today=new Date().toISOString().split("T")[0];
-  const tglManual=tglInput&&tglInput!==today?tglInput:null;
+  const todayStr = todayLocal();
+  const tglManual = tglInput && tglInput !== todayStr ? tglInput : null;
   const waktuSimpan=tglInput?new Date(tglInput+"T"+new Date().toTimeString().slice(0,8)):new Date();
   for(const item of validObat){
     const {obatId,batchId}=parseItemId(item.id);
@@ -1713,9 +1714,9 @@ el("btn-proses-tes").addEventListener("click",()=>{
   const isTesPrib=bayar==="PRIBADI";
   const totalBayar=isTesPrib?0:Math.max(0,subtotal-diskon);
   const kembalian=isTesPrib?null:getKembalian("tes");
-  const tglTesinput=el("tes-tgl").value;
-  const todayTes=new Date().toISOString().split("T")[0];
-  const tglTesManual=tglTesinput&&tglTesinput!==todayTes?tglTesinput:null;
+  const tglTesinput = el("tes-tgl").value;
+  const todayStr = todayLocal();
+  const tglTesManual = tglTesinput && tglTesinput !== todayStr ? tglTesinput : null;
   tampilkanNota([...detailObat,...detailJasa],totalBayar,"TES-"+Date.now(),true,pembeli,isTesPrib?0:diskon,subtotal,bayar,kembalian,tglTesManual);
 });
 
@@ -1724,10 +1725,14 @@ function tampilkanNota(items,total,noTrx,isTes,pembeli="",diskon=0,subtotal=0,ba
   let tgl;
   if(tglManual){
     // Tanggal manual - tanpa jam
-    const d=new Date(tglManual+"T00:00:00");
-    tgl=d.toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
+  let tgl;
+  if(tglManual){
+    // Tanggal manual (bukan hari ini) → tanpa jam
+    const d = new Date(tglManual + "T00:00:00");
+    tgl = d.toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
   } else {
-    tgl=new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
+    // Hari ini → pakai jam
+    tgl = new Date().toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
   }
   const rows=items.map(i=>`<tr>
     <td style="padding:5px 0;font-size:13px">${esc(i.nama)}</td>
