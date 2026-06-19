@@ -705,6 +705,22 @@ function renderTblStok(){
     const hargajual = isStripLayanan(o.nama) 
       ? '<span style="color:var(--muted)">- (via layanan)</span>' 
       : rp(o.harga_jual);
+
+    if(isStripLayanan(o.nama)){
+      const s = o.stok||0;
+      const cls = s<=0 ? "out" : s<4 ? "low" : "ok";
+      const lbl = s<=0 ? "Habis" : s<4 ? "Menipis" : "Aman";
+      html += `<tr>
+        <td><strong>${esc(o.nama)}</strong></td>
+        <td>${esc(o.satuan||"-")}</td>
+        <td>${s}</td>
+        <td>${rp(o.harga_beli)}</td>
+        <td>${hargajual}</td>
+        <td><span style="color:var(--muted)">-</span></td>
+        <td><span class="badge ${cls}">${lbl}</span></td>
+      </tr>`;
+      return;
+    }
     
     if(batches.length === 0){
       const s = o.stok||0;
