@@ -2264,7 +2264,7 @@ const filterByTgl = (tgl) => {
   let omzet=0, untung=0;
   const rowsJual = snapJual.docs.map(d=>{
     const dt=d.data();
-    const wkt=dt.waktu?.toDate().toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})||"-";
+    const wkt=dt.waktu?.toDate().toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"})||"-";
     const detail=dt.items?.map(i=>(i.tipe==="jasa"?"&#129657; ":"")+esc(i.nama)+" x"+i.qty).join(", ")||"-";
     omzet+=dt.total||0; untung+=dt.untung||0;
     return`<tr>
@@ -2302,10 +2302,10 @@ const filterByTgl = (tgl) => {
     const itemStr = dt.items?.map(i => esc(i.nama) + " x" + i.qty).join(", ") || "-";
     totalBeli += dt.total || 0;
     return `<tr>
-      <td>${dt.tanggal || "-"}</td>
+      <td style="white-space:nowrap;font-size:13px;font-weight:500">${dt.tanggal || "-"}</td>
       <td style="font-size:12px">${esc(dt.keterangan || "-")}</td>
       <td style="font-size:12px">${itemStr}</td>
-      <td>${rp(dt.total)}</td>
+      <td style="white-space:nowrap;font-size:14px;font-weight:600">${rp(dt.total)}</td>
       <td style="display:flex;gap:4px">
         <button class="btn btn-outline btn-sm" data-edit-beli="${d.id}" style="border-color:var(--teal);color:var(--teal)">&#9998;</button>
         <button class="btn btn-red btn-sm" data-hapus-beli="${d.id}">&#128465;</button>
