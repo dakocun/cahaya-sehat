@@ -132,44 +132,11 @@ tr.separator:hover td{background:var(--navy)!important}
 
 <!-- STOK -->
 <div id="page-stok" class="page">
-  <!-- Form tambah stok manual (collapsible) -->
-  <div class="card" id="card-tambah-stok" style="display:none">
-    <h2>&#10133; Tambah Stok Obat Lama</h2>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Untuk obat yang sudah ada sebelumnya dan belum tercatat di aplikasi ini.</p>
-    <div class="form-row">
-      <div class="field"><label>Nama Obat</label>
-        <input id="ms-nama" type="text" list="dl-stok-manual">
-        <datalist id="dl-stok-manual"></datalist>
-      </div>
-      <div class="field"><label>Satuan</label>
-        <select id="ms-satuan">
-          <option value="">-- Pilih --</option>
-          <option value="STRIP">STRIP</option>
-          <option value="BOTOL">BOTOL</option>
-          <option value="AMPUL">AMPUL</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="field"><label>Jumlah Stok</label><input id="ms-qty" type="number" min="1"></div>
-      <div class="field"><label>Harga Beli/satuan (Rp)</label><input id="ms-hbeli" type="number" min="0"></div>
-    </div>
-    <div class="form-row">
-      <div class="field"><label>Harga Jual/satuan (Rp)</label><input id="ms-hjual" type="number" min="0"></div>
-      <div class="field"><label>Expired Date (opsional)</label><input id="ms-exp" type="date"></div>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:4px">
-      <button id="btn-simpan-stok-manual" class="btn btn-navy">&#128190; Simpan</button>
-      <button id="btn-batal-stok-manual" class="btn btn-outline">Batal</button>
-    </div>
-  </div>
-
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
       <h2 style="margin-bottom:0;padding-bottom:0;border:none">&#128230; Daftar Stok</h2>
       <div style="display:flex;gap:8px">
         <button id="btn-excel-stok" class="btn btn-outline btn-sm" style="border-color:#1d6f42;color:#1d6f42">&#128196; Download Excel</button>
-        <button id="btn-show-tambah-stok" class="btn btn-navy btn-sm">&#10133; Tambah Stok Lama</button>
       </div>
     </div>
     <div style="overflow-x:auto">
@@ -751,7 +718,6 @@ function renderTblStok(){
         <td>${hargajual}</td>
         <td>${o.batchExp ? formatTgl(o.batchExp) : '<span style="color:var(--muted)">-</span>'}</td>
         <td><span class="badge ${cls}">${lbl}</span></td>
-        <td><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>
       </tr>`;
     } else {
       const expMap = {};
@@ -777,7 +743,6 @@ function renderTblStok(){
           <td style="font-weight:600">${s}</td>
           <td style="font-size:11px">${expHtml}</td>
           ${idx === 0 ? `<td rowspan="${rowspan}" style="vertical-align:middle"><span class="badge ${clsTotal}">${lblTotal}</span></td>
-          <td rowspan="${rowspan}" style="vertical-align:middle"><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>` : ''}
         </tr>`;
       });
     }
@@ -785,224 +750,8 @@ function renderTblStok(){
   
   tb.innerHTML = html;
   
-  tb.querySelectorAll("[data-edit-stok]").forEach(btn=>{
-    btn.addEventListener("click",()=>editStok(btn.dataset.editStok));
-  });
 }
   
-function editStok(id){
-  const o = stokList.find(x=>x.id===id);
-  if(!o) return;
-  
-  const batches = o.batches 
-    ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0)
-    : [];
-  
-  let batchForms = "";
-  
-  if(batches.length === 0){
-    batchForms = `
-      <div style="background:var(--bg);padding:10px;border-radius:8px;margin-bottom:8px">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Batch #1 (total stok)</div>
-        <div class="form-row">
-          <div class="field"><label>Qty</label><input class="eb-qty" value="${o.stok||0}" type="number" min="0"></div>
-          <div class="field"><label>Exp Date</label><input class="eb-exp" type="date" value="${getExpTerdekat(o)||""}"></div>
-        </div>
-      </div>`;
-  } else {
-    batchForms = batches.map(([bid, b], i) => `
-      <div style="background:var(--bg);padding:10px;border-radius:8px;margin-bottom:8px" data-bid="${bid}">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-size:12px;font-weight:600;color:var(--navy)">Batch #${i+1}</span>
-          <button class="btn btn-red btn-sm eb-del-batch" style="padding:2px 8px;font-size:10px">&#10005;</button>
-        </div>
-        <div class="form-row">
-          <div class="field"><label>Qty</label><input class="eb-qty" value="${b.qty||0}" type="number" min="0"></div>
-          <div class="field"><label>Exp Date</label><input class="eb-exp" type="date" value="${b.exp||""}"></div>
-        </div>
-      </div>`
-    ).join("");
-  }
-  
-  el("card-tambah-stok").style.display="block";
-  el("card-tambah-stok").innerHTML = `
-    <h2>✏️ Edit Obat: ${esc(o.nama)}</h2>
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="field"><label>Nama Obat</label><input id="ms-nama" type="text" value="${esc(o.nama)}"></div>
-      <div class="field"><label>Satuan</label>
-        <select id="ms-satuan">
-          <option value="STRIP" ${(o.satuan||"").toUpperCase()==="STRIP"?"selected":""}>STRIP</option>
-          <option value="BOTOL" ${(o.satuan||"").toUpperCase()==="BOTOL"?"selected":""}>BOTOL</option>
-          <option value="AMPUL" ${(o.satuan||"").toUpperCase()==="AMPUL"?"selected":""}>AMPUL</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="field"><label>Harga Beli/satuan (Rp)</label><input id="ms-hbeli" type="number" value="${o.harga_beli||0}" min="0"></div>
-      <div class="field"><label>Harga Jual/satuan (Rp)</label><input id="ms-hjual" type="number" value="${o.harga_jual||0}" min="0"></div>
-    </div>
-    <div class="section-label">📦 Batch / Exp Date</div>
-    <div id="eb-batches">${batchForms}</div>
-    <button id="eb-add-batch" class="btn btn-outline btn-sm" style="margin-bottom:12px">+ Tambah Batch</button>
-    <div style="display:flex;gap:10px">
-      <button id="btn-simpan-edit-stok" class="btn btn-navy">💾 Simpan</button>
-      <button id="btn-batal-edit-stok" class="btn btn-outline">Batal</button>
-    </div>
-  `;
-  
-  el("card-tambah-stok").dataset.editId = id;
-  
-  // Wire buttons
-  el("btn-batal-edit-stok").addEventListener("click", ()=>{
-    el("card-tambah-stok").style.display="none";
-    loadStok();
-  });
-  
-  el("eb-add-batch").addEventListener("click", ()=>{
-    const div = document.createElement("div");
-    div.style.cssText = "background:var(--bg);padding:10px;border-radius:8px;margin-bottom:8px";
-    div.innerHTML = `
-      <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:4px">Batch Baru</div>
-      <div class="form-row">
-        <div class="field"><label>Qty</label><input class="eb-qty" value="0" type="number" min="0"></div>
-        <div class="field"><label>Exp Date</label><input class="eb-exp" type="date"></div>
-      </div>
-      <button class="btn btn-red btn-sm eb-del-batch" style="padding:2px 8px;font-size:10px;margin-top:4px">&#10005;</button>
-    `;
-    el("eb-batches").appendChild(div);
-    div.querySelector(".eb-del-batch").addEventListener("click", ()=>div.remove());
-  });
-  
-  // Wire delete batch existing
-  el("eb-batches").querySelectorAll(".eb-del-batch").forEach(btn => {
-    btn.addEventListener("click", function(){
-      this.closest('[data-bid]')?.remove();
-    });
-  });
-  
-  // Simpan edit
-  el("btn-simpan-edit-stok").addEventListener("click", async ()=>{
-    const nama = el("ms-nama").value.trim().toUpperCase();
-    const satuan = el("ms-satuan").value;
-    const hbeli = parseFloat(el("ms-hbeli").value)||0;
-    const hjual = parseFloat(el("ms-hjual").value)||0;
-    
-    if(!nama){ toast("Nama obat wajib diisi"); return; }
-    
-    const batchEls = el("eb-batches").querySelectorAll(".form-row");
-    const batches = {};
-    let totalStok = 0;
-    
-    batchEls.forEach(row => {
-      const qty = parseInt(row.querySelector(".eb-qty")?.value)||0;
-      const exp = row.querySelector(".eb-exp")?.value || "";
-      if(qty > 0){
-        const bid = "edit_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);
-        batches[bid] = { qty, exp, harga_beli: hbeli };
-        totalStok += qty;
-      }
-    });
-    
-    await updateDoc(doc(db, C_OBAT, id), {
-      nama, satuan, harga_beli: hbeli, harga_jual: hjual,
-      stok: totalStok, batches, updated: Timestamp.now()
-    });
-    
-    toast("Obat diperbarui!");
-    el("card-tambah-stok").style.display = "none";
-    loadStok();
-  });
-  
-  window.scrollTo({top:0,behavior:"smooth"});
-}
-
-// Tambah stok manual
-el("btn-show-tambah-stok").addEventListener("click",()=>{
-  const card=el("card-tambah-stok");
-  card.style.display=card.style.display==="none"?"block":"none";
-  // Isi datalist dari stok
-  const dl=el("dl-stok-manual");
-  dl.innerHTML=stokList.map(o=>`<option value="${o.nama}">`).join("");
-  if(card.style.display==="block") el("ms-nama").focus();
-});
-
-el("btn-batal-stok-manual").addEventListener("click",()=>{
-  const card=el("card-tambah-stok");
-  card.style.display="none";
-  card.dataset.editId="";
-  card.querySelector("h2").textContent="➕ Tambah Stok Obat Lama";
-  el("btn-simpan-stok-manual").textContent="💾 Simpan";
-  ["ms-nama","ms-qty","ms-hbeli","ms-hjual","ms-exp"].forEach(id=>el(id).value="");
-  el("ms-satuan").value="";
-});
-
-// Auto-isi saat pilih nama yang sudah ada
-el("ms-nama").addEventListener("input",function(){
-  this.value=this.value.toUpperCase();
-  const match=stokList.find(x=>x.nama===this.value);
-  if(match){
-    el("ms-satuan").value=match.satuan||"";
-    el("ms-hbeli").value=match.harga_beli||"";
-    el("ms-hjual").value=match.harga_jual||"";
-  }
-});
-
-el("btn-simpan-stok-manual").addEventListener("click", async ()=>{
-  const card = el("card-tambah-stok");
-  const editId = card.dataset.editId||"";
-  const nama  = el("ms-nama").value.trim().toUpperCase();
-  const satuan= el("ms-satuan").value;
-  const qty   = parseInt(el("ms-qty").value)||0;
-  const hbeli = parseFloat(el("ms-hbeli").value)||0;
-  const hjual = parseFloat(el("ms-hjual").value)||0;
-  const exp   = el("ms-exp").value;
-
-  if(!nama){toast("Nama obat wajib diisi");return;}
-
-  if(editId){
-    // Mode edit - update data tanpa ubah stok (kecuali ada qty)
-    const ref=doc(db,C_OBAT,editId);
-    const updateData={nama,satuan,harga_beli:hbeli,harga_jual:hjual,updated:Timestamp.now()};
-    if(qty>0){
-      updateData.stok=increment(qty);
-      const batchId="edit_"+Date.now();
-      const snap=await getDoc(ref);
-      const batches=(snap.data()?.batches)||{};
-      batches[batchId]={exp,qty,harga_beli:hbeli,sumber:"edit"};
-      updateData.batches=batches;
-    }
-    await updateDoc(ref,updateData);
-    toast("Obat "+nama+" diperbarui");
-    card.dataset.editId="";
-    card.querySelector("h2").textContent="➕ Tambah Stok Obat Lama";
-    el("btn-simpan-stok-manual").textContent="💾 Simpan";
-  } else {
-    // Mode tambah baru
-    if(qty<=0){toast("Jumlah wajib diisi untuk tambah stok baru");return;}
-    const docId=nama.replace(/\s+/g,"_").toLowerCase();
-    const ref=doc(db,C_OBAT,docId);
-    const snap=await getDoc(ref);
-    const batchId="manual_"+Date.now();
-    const batches={};
-    batches[batchId]={exp,qty,harga_beli:hbeli,sumber:"manual"};
-    if(snap.exists()){
-      const existing=snap.data();
-      const existBatches=existing.batches||{};
-      existBatches[batchId]=batches[batchId];
-      await updateDoc(ref,{stok:increment(qty),harga_beli:hbeli||existing.harga_beli,harga_jual:hjual||existing.harga_jual,satuan:satuan||existing.satuan,batches:existBatches,updated:Timestamp.now()});
-      toast("Stok "+nama+" ditambahkan");
-    } else {
-      await setDoc(ref,{nama,satuan,stok:qty,harga_beli:hbeli,harga_jual:hjual,batches,created:Timestamp.now()});
-      toast("Obat "+nama+" ditambahkan");
-    }
-  }
-
-  card.style.display="none";
-  ["ms-nama","ms-qty","ms-hbeli","ms-hjual","ms-exp"].forEach(i=>el(i).value="");
-  el("ms-satuan").value="";
-  loadStok();
-});
-
 // ── LAYANAN ──────────────────────────────────────────────
 async function loadLayanan(){
   const snap=await getDocs(query(collection(db,C_LAY),orderBy("nama")));
