@@ -799,7 +799,7 @@ function renderTblStok(){
         <td>${s}</td>
         <td>${rp(o.harga_beli)}</td>
         <td>${hargajual}</td>
-        <td><span style="color:var(--muted)">-</span></td>
+        <td>${o.batchExp ? formatTgl(o.batchExp) : '<span style="color:var(--muted)">-</span>'}</td>
         <td><span class="badge ${cls}">${lbl}</span></td>
         <td><button class="btn btn-outline btn-sm" data-edit-stok="${o.id}">&#9998; Edit</button></td>
       </tr>`;
@@ -817,7 +817,7 @@ function renderTblStok(){
       
       sortedExps.forEach(([exp, qty], idx) => {
         const s = qty;
-        const expHtml = exp !== "-" ? exp : '<span style="color:var(--muted)">-</span>';
+        const expHtml = exp !== "-" ? formatTgl(exp) : '<span style="color:var(--muted)">-</span>';
         
         html += `<tr>
           ${idx === 0 ? `<td rowspan="${rowspan}" style="vertical-align:middle"><strong>${esc(o.nama)}</strong></td>
@@ -1181,7 +1181,7 @@ async function loadGagalCek(){
     }
     tb.innerHTML = snap.docs.map(d => {
       const dt = d.data();
-      const tgl = dt.tgl || dt.waktu?.toDate().toISOString().split("T")[0] || "-";
+      const tgl = formatTgl(dt.tgl || dt.waktu?.toDate().toISOString().split("T")[0] || "");
       return `<tr>
         <td style="font-size:12px">${tgl}</td>
         <td>${esc(dt.layanan||"-")}</td>
@@ -1571,7 +1571,7 @@ function renderItems(mode){
       const {obatId,expKey} = parseItemId(item.id);
       const ob = stokList.find(x=>x.id===obatId);
       if(!ob) return "";
-      const expTxt = expKey && expKey!=="__all__" ? " ("+expKey+")" : "";
+      const expTxt = expKey && expKey!=="__all__" ? " ("+formatTgl(expKey)+")" : "";
       return (ob.nama || "").trim().replace(/\s+/g, ' ') + expTxt;
     })();
 
@@ -1610,7 +1610,7 @@ function renderItems(mode){
         }
         prevNama = g.nama;
         g.batches.forEach(b => {
-          const expTxt = b.exp ? " ("+b.exp+")" : "";
+          const expTxt = b.exp ? " ("+formatTgl(b.exp)+")" : "";
           const label = g.nama + expTxt + " — sisa: " + b.qty;
           const compositeId = g.nama.replace(/\s+/g,'_').toLowerCase() + "::" + b.batchId + "::" + (b.expKey||"");
           // cari real compositeId dari lookup
