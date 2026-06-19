@@ -2446,8 +2446,14 @@ el("btn-simpan-edit-trx").addEventListener("click", async ()=>{
   // Terapkan diff ke stok (negatif = kembalikan, positif = kurangi lagi)
   for(const [nama, diff] of Object.entries(obatMap)){
     if(diff===0) continue;
-    const obat = stokList.find(o=>o.nama===nama);
-    if(obat) await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(-diff)});
+    const namaBersih = (nama||"").trim().replace(/\s+/g,' ').toUpperCase();
+    const obat = stokList.find(o=>(o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===namaBersih);
+    if(obat) {
+      await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(-diff)});
+      console.log(`✅ Edit stok: ${obat.nama} diff=${-diff}`);
+    } else {
+      console.log(`⚠️ Obat tidak ditemukan: ${nama}`);
+    }
   }
 
   // Hitung total & untung baru
@@ -2481,7 +2487,8 @@ async function hapusTrx(id){
   for(const item of (dt.items||[])){
     if(item.tipe==="jasa") continue;
     // Cari obat berdasarkan nama
-    const obatId2=item.obatId||stokList.find(o=>o.nama===item.nama)?.id;
+    const namaBersih = (item.nama||"").trim().replace(/\s+/g,' ').toUpperCase();
+    const obatId2=item.obatId||stokList.find(o=>(o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===namaBersih)?.id;
     if(obatId2){
       const bUpdate={stok:increment(item.qty||1)};
       if(item.batchId&&item.batchId!=="__all__"){
@@ -2497,8 +2504,8 @@ async function hapusTrx(id){
   if((dt.bayar||"TUNAI")!=="PRIBADI"){
     for(const item of (dt.items||[])){
       if(item.tipe!=="jasa") continue;
-      const key=item.nama.toLowerCase().replace("cek ","").trim();
-      const strip=stokList.find(x=>x.nama.toLowerCase().includes("strip")&&x.nama.toLowerCase().includes(key));
+      const key=(item.nama||"").toLowerCase().replace("cek ","").trim();
+      const strip=stokList.find(x=>(x.nama||"").toLowerCase().includes("strip")&&(x.nama||"").toLowerCase().includes(key));
       if(strip) await updateDoc(doc(db,C_OBAT,strip.id),{stok:increment(item.qty||1)});
     }
   }
