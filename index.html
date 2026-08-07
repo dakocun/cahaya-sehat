@@ -1130,60 +1130,92 @@ function hitungTotalBelanja(){
 }
 
 el("btn-simpan-belanja").addEventListener("click", async ()=>{
-  const btn = el("btn-simpan-belanja"); // ⬅ TAMBAH
-  btnLoading(btn, true); // ⬅ TAMBAH
-  
-  const tgl=el("b-tgl").value;
-  const ket=el("b-ket").value.trim().toUpperCase();
-  const valid=belanjaItems.filter(i=>i.nama.trim()&&i.qty>0);
-  if(!valid.length){toast("Isi minimal 1 item"); btnLoading(btn, false); return;} // ⬅ return juga harus matikan loading
+  const btn = el("btn-simpan-belanja");
+  btnLoading(btn, true);
 
-  let total=0;
-  const detail=valid.map(i=>{
-    const sub=(i.harga_beli||0)*(i.qty||0);
-    total+=sub;
-    return{nama:i.nama.trim(),satuan:i.satuan||"",qty:i.qty,harga_beli:i.harga_beli||0,harga_jual:i.harga_jual||0,exp:i.exp||"",subtotal:i.harga_beli_total||sub};
-  });
-
-  // Simpan riwayat belanja
-  await addDoc(collection(db,C_BELI),{tanggal:tgl,keterangan:ket,items:detail,total,created:Timestamp.now()});
-
-  // Update / tambah stok obat
-  for(let idx=0; idx<detail.length; idx++){
-    const item=detail[idx];
-    const docId=item.nama.trim().split(" ").join("_").toLowerCase();
-    const ref=doc(db,C_OBAT,docId);
-    const snap=await getDoc(ref);
-    const batchId="batch_"+Date.now()+"_"+idx+"_"+Math.random().toString(36).slice(2,6);
-    if(snap.exists()){
-      const existing=snap.data();
-      const updateData={
-        stok:increment(item.qty),
-        harga_beli:item.harga_beli,
-        harga_jual:item.harga_jual||existing.harga_jual||0,
-        satuan:item.satuan||existing.satuan||"",
-        updated:Timestamp.now()
-      };
-      updateData["batches."+batchId]={exp:item.exp,qty:item.qty,harga_beli:item.harga_beli};
-      await updateDoc(ref,updateData);
-    } else {
-      const batches={};
-      batches[batchId]={exp:item.exp,qty:item.qty,harga_beli:item.harga_beli};
-      await setDoc(ref,{
-        nama:item.nama,satuan:item.satuan||"",
-        stok:item.qty,harga_beli:item.harga_beli,
-        harga_jual:item.harga_jual||0,
-        batches,created:Timestamp.now()
-      });
+  try {
+    const tgl=el("b-tgl").value;
+    const ket=el("b-ket").value.trim().toUpperCase();
+    const valid=belanjaItems.filter(i=>i.nama.trim()&&i.qty>0);
+    if(!valid.length){
+      toast("Isi minimal 1 item");
+      return; // finally di bawah tetap mematikan loading
     }
-    await new Promise(r=>setTimeout(r,2));
-  }
 
-  toast("Belanja disimpan & stok diperbarui!");
-  resetBelanjaForm();
-  loadStok();
-  
-  btnLoading(btn, false); // ⬅ TAMBAH DI AKHIR
+    let total=0;
+    const detail=valid.map(i=>{
+      const sub=(i.harga_beli||0)*(i.qty||0);
+      total+=sub;
+      return{nama:i.nama.trim(),satuan:i.satuan||"",qty:i.qty,harga_beli:i.harga_beli||0,harga_jual:i.harga_jual||0,exp:i.exp||"",subtotal:i.harga_beli_total||sub};
+    });
+
+    // Simpan riwayat belanja
+    await addDoc(collection(db,C_BELI),{tanggal:tgl,keterangan:ket,items:detail,total,created:Timestamp.now()});
+
+    // Update / tambah stok obat
+    let gagalItems = [];
+    for(let idx=0; idx<detail.length; idx++){
+      const item=detail[idx];
+
+      // sanitize docId: buang karakter yang tidak valid untuk Firestore doc ID
+      let docId = item.nama.trim()
+        .replace(/[\/\\.#$\[\]]/g, "")
+        .split(" ").join("_")
+        .toLowerCase();
+
+      if(!docId){
+        console.warn("Nama obat tidak valid untuk docId, dilewati:", item.nama);
+        gagalItems.push(item.nama);
+        continue;
+      }
+
+      try {
+        const ref=doc(db,C_OBAT,docId);
+        const snap=await getDoc(ref);
+        const batchId="batch_"+Date.now()+"_"+idx+"_"+Math.random().toString(36).slice(2,6);
+        if(snap.exists()){
+          const existing=snap.data();
+          const updateData={
+            stok:increment(item.qty),
+            harga_beli:item.harga_beli,
+            harga_jual:item.harga_jual||existing.harga_jual||0,
+            satuan:item.satuan||existing.satuan||"",
+            updated:Timestamp.now()
+          };
+          updateData["batches."+batchId]={exp:item.exp,qty:item.qty,harga_beli:item.harga_beli};
+          await updateDoc(ref,updateData);
+        } else {
+          const batches={};
+          batches[batchId]={exp:item.exp,qty:item.qty,harga_beli:item.harga_beli};
+          await setDoc(ref,{
+            nama:item.nama,satuan:item.satuan||"",
+            stok:item.qty,harga_beli:item.harga_beli,
+            harga_jual:item.harga_jual||0,
+            batches,created:Timestamp.now()
+          });
+        }
+      } catch(itemErr){
+        console.error("Gagal update stok untuk item:", item.nama, itemErr);
+        gagalItems.push(item.nama);
+      }
+
+      await new Promise(r=>setTimeout(r,2));
+    }
+
+    if(gagalItems.length){
+      toast("⚠️ Belanja tersimpan, tapi stok gagal update untuk: " + gagalItems.join(", "));
+    } else {
+      toast("Belanja disimpan & stok diperbarui!");
+    }
+    resetBelanjaForm();
+    await loadStok();
+
+  } catch(err) {
+    console.error("Error simpan belanja:", err);
+    toast("❌ Gagal simpan belanja: " + err.message);
+  } finally {
+    btnLoading(btn, false);
+  }
 });
 
 async function loadBelanja(){
@@ -2073,40 +2105,70 @@ async function cetakUlang(id){
 
 async function hapusTrx(id){
   if(!confirm("Hapus transaksi ini? Stok akan dikembalikan.")) return;
-  const snap=await getDoc(doc(db,C_TRX,id));
-  if(!snap.exists()){toast("Data tidak ditemukan");return;}
-  const dt=snap.data();
 
-  // Kembalikan stok untuk item obat
-  for(const item of (dt.items||[])){
-    if(item.tipe==="jasa") continue;
-    // Cari obat berdasarkan nama
-    const namaBersih = (item.nama||"").trim().replace(/\s+/g,' ').toUpperCase();
-    const obatId2=item.obatId||stokList.find(o=>(o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===namaBersih)?.id;
-    if(obatId2){
-      const bUpdate = { stok: increment(item.qty||1) };
-      if(item.batchId && item.batchId !== "__all__"){
-        bUpdate["batches."+item.batchId+".qty"] = increment(item.qty||1);
-      }
-      await updateDoc(doc(db,C_OBAT,obatId2),bUpdate);
-    }
-  }
+  try {
+    const snap=await getDoc(doc(db,C_TRX,id));
+    if(!snap.exists()){toast("Data tidak ditemukan");return;}
+    const dt=snap.data();
 
-  // Kembalikan stok strip untuk jasa (jika bukan PRIBADI)
-  if((dt.bayar||"TUNAI")!=="PRIBADI"){
+    let gagalItems = [];
+
+    // Kembalikan stok untuk item obat
     for(const item of (dt.items||[])){
-      if(item.tipe!=="jasa") continue;
-      const key=(item.nama||"").toLowerCase().replace("cek ","").trim();
-      const strip=stokList.find(x=>(x.nama||"").toLowerCase().includes("strip")&&(x.nama||"").toLowerCase().includes(key));
-      if(strip) await updateDoc(doc(db,C_OBAT,strip.id),{stok:increment(item.qty||1)});
+      if(item.tipe==="jasa") continue;
+      // Cari obat berdasarkan nama
+      const namaBersih = (item.nama||"").trim().replace(/\s+/g,' ').toUpperCase();
+      const obatId2=item.obatId||stokList.find(o=>(o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===namaBersih)?.id;
+      if(obatId2){
+        try {
+          const bUpdate = { stok: increment(item.qty||1) };
+          if(item.batchId && item.batchId !== "__all__"){
+            bUpdate["batches."+item.batchId+".qty"] = increment(item.qty||1);
+          }
+          await updateDoc(doc(db,C_OBAT,obatId2),bUpdate);
+        } catch(itemErr){
+          console.error("Gagal kembalikan stok untuk:", item.nama, itemErr);
+          gagalItems.push(item.nama);
+        }
+      } else {
+        console.warn("Obat tidak ditemukan saat hapus transaksi:", item.nama);
+        gagalItems.push(item.nama);
+      }
     }
-  }
 
-  await deleteDoc(doc(db,C_TRX,id));
-  toast("Transaksi dihapus & stok dikembalikan");
-  await loadStok();
-  loadRekapData();
-  btnLoading(btn, false); // ⬅ TAMBAH
+    // Kembalikan stok strip untuk jasa (jika bukan PRIBADI)
+    if((dt.bayar||"TUNAI")!=="PRIBADI"){
+      for(const item of (dt.items||[])){
+        if(item.tipe!=="jasa") continue;
+        const key=(item.nama||"").toLowerCase().replace("cek ","").trim();
+        const strip=stokList.find(x=>(x.nama||"").toLowerCase().includes("strip")&&(x.nama||"").toLowerCase().includes(key));
+        if(strip){
+          try {
+            await updateDoc(doc(db,C_OBAT,strip.id),{stok:increment(item.qty||1)});
+          } catch(itemErr){
+            console.error("Gagal kembalikan stok strip untuk:", item.nama, itemErr);
+            gagalItems.push(item.nama+" (strip)");
+          }
+        } else {
+          gagalItems.push(item.nama+" (strip tidak ditemukan)");
+        }
+      }
+    }
+
+    await deleteDoc(doc(db,C_TRX,id));
+
+    if(gagalItems.length){
+      toast("⚠️ Transaksi dihapus, tapi stok gagal dikembalikan untuk: " + gagalItems.join(", "));
+    } else {
+      toast("Transaksi dihapus & stok dikembalikan");
+    }
+    await loadStok();
+    loadRekapData();
+
+  } catch(err) {
+    console.error("Error hapus transaksi:", err);
+    toast("❌ Gagal hapus transaksi: " + err.message);
+  }
 }
 
 // ── DASHBOARD ────────────────────────────────────────────
@@ -2597,19 +2659,53 @@ el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
 
 async function hapusBelanja(id){
   if(!confirm("Hapus belanja ini? Stok akan dikurangi kembali.")) return;
-  const snap=await getDoc(doc(db,C_BELI,id));
-  if(snap.exists()){
-    const dt=snap.data();
-    for(const item of (dt.items||[])){
-      const obat=stokList.find(o=>o.nama===item.nama);
-      if(obat) await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(-(item.qty||1))});
+
+  try {
+    const snap=await getDoc(doc(db,C_BELI,id));
+    let gagalItems = [];
+
+    if(snap.exists()){
+      const dt=snap.data();
+      // Pastikan data obat terbaru sebelum mencari (hindari stokList basi)
+      await loadStok();
+
+      for(const item of (dt.items||[])){
+        const namaBersih = (item.nama||"").trim().replace(/\s+/g,' ').toUpperCase();
+        const obat=stokList.find(o=>(o.nama||"").trim().replace(/\s+/g,' ').toUpperCase()===namaBersih);
+
+        if(!obat){
+          console.warn("Obat tidak ditemukan saat hapus belanja:", item.nama);
+          gagalItems.push(item.nama);
+          continue;
+        }
+
+        try {
+          await updateDoc(doc(db,C_OBAT,obat.id),{stok:increment(-(item.qty||1))});
+        } catch(itemErr){
+          console.error("Gagal kurangi stok untuk:", item.nama, itemErr);
+          gagalItems.push(item.nama);
+        }
+      }
+    } else {
+      toast("Data belanja tidak ditemukan");
+      return;
     }
+
+    await deleteDoc(doc(db,C_BELI,id));
+
+    if(gagalItems.length){
+      toast("⚠️ Belanja dihapus, tapi stok gagal dikurangi untuk: " + gagalItems.join(", "));
+    } else {
+      toast("Belanja dihapus & stok dikurangi");
+    }
+    await loadStok();
+    loadBelanja();
+    loadRekapData();
+
+  } catch(err) {
+    console.error("Error hapus belanja:", err);
+    toast("❌ Gagal hapus belanja: " + err.message);
   }
-  await deleteDoc(doc(db,C_BELI,id));
-  toast("Belanja dihapus & stok dikurangi");
-  await loadStok();
-  loadBelanja();
-  loadRekapData();
 }
 
 // ── EXCEL HELPERS ────────────────────────────────────────
