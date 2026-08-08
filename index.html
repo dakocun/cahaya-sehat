@@ -1047,28 +1047,40 @@ function initObatRusak(){
   const sel = el("or-obat");
   if(!sel) return;
 
-  // Bangun daftar obat + batch (mirip pola dropdown di halaman Penjualan),
-  // supaya bisa pilih batch spesifik (misal yang mau kadaluarsa) kalau ada.
-  const options = [];
-  [...stokList].sort((a,b)=>(a.nama||"").localeCompare(b.nama||"")).forEach(o=>{
+  // Gabungkan dokumen Firestore yang punya nama obat sama (konsisten dengan
+  // tampilan di halaman Stok & Penjualan, yang sudah menggabungkan duplikat dokumen).
+  const merged = {}; // key: nama ternormalisasi -> {nama, batches:[{docId,batchId,exp,qty}]}
+  stokList.forEach(o=>{
+    const key = (o.nama||"").trim().replace(/\s+/g,' ').toUpperCase();
+    if(!merged[key]) merged[key] = { nama: o.nama, batches: [] };
+    const m = merged[key];
+
     const batchEntries = o.batches ? Object.entries(o.batches).filter(([,b])=>(b.qty||0)>0) : [];
-    if(batchEntries.length===0){
-      if((o.stok||0)<=0) return;
-      options.push({
-        value: o.id+"::__all__",
-        label: `${o.nama} — stok: ${o.stok||0}`
+    if(batchEntries.length){
+      batchEntries.forEach(([batchId,b])=>{
+        m.batches.push({ docId:o.id, batchId, exp:b.exp||"", qty:b.qty||0 });
       });
-    } else {
-      batchEntries
-        .sort((a,b)=>(a[1].exp||"9999").localeCompare(b[1].exp||"9999"))
-        .forEach(([batchId,b])=>{
-          const expTxt = b.exp ? ` (exp: ${formatTgl(b.exp)})` : "";
-          options.push({
-            value: o.id+"::"+batchId,
-            label: `${o.nama}${expTxt} — stok: ${b.qty||0}`
-          });
-        });
+    } else if((o.stok||0) > 0){
+      // dokumen lama tanpa peta batches
+      m.batches.push({ docId:o.id, batchId:"__all__", exp:o.batchExp||"", qty:o.stok||0 });
     }
+  });
+
+  const namesSorted = Object.values(merged)
+    .filter(m=>m.batches.length>0)
+    .sort((a,b)=>(a.nama||"").localeCompare(b.nama||""));
+
+  const options = [];
+  namesSorted.forEach(m=>{
+    m.batches
+      .sort((a,b)=>(a.exp||"9999").localeCompare(b.exp||"9999"))
+      .forEach(b=>{
+        const expTxt = b.exp ? ` (exp: ${formatTgl(b.exp)})` : "";
+        options.push({
+          value: b.docId+"::"+b.batchId,
+          label: `${m.nama}${expTxt} — stok: ${b.qty}`
+        });
+      });
   });
 
   sel.innerHTML = '<option value="">-- Pilih --</option>' +
