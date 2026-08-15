@@ -106,6 +106,7 @@ tr.separator:hover td{background:var(--navy)!important}
   <div class="stats">
     <div class="stat"><div class="val" id="s-jenis">-</div><div class="lbl">Jenis Obat</div></div>
     <div class="stat"><div class="val" id="s-rendah">-</div><div class="lbl">Stok Menipis</div></div>
+    <div class="stat" style="background:#fee2e2"><div class="val" id="s-habis" style="color:var(--red)">-</div><div class="lbl">Stok Habis</div></div>
     <div class="stat"><div class="val" id="s-expsoon">-</div><div class="lbl">Exp &lt; 30 Hari</div></div>
   </div>
 
@@ -122,6 +123,13 @@ tr.separator:hover td{background:var(--navy)!important}
     <h2>&#128202; Tren Produk / Layanan Terlaris</h2>
     <table><thead><tr><th>Produk / Layanan</th><th style="text-align:center">Terjual</th></tr></thead>
     <tbody id="tb-tren"><tr><td colspan="3" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
+  </div>
+
+  <!-- Stok Habis -->
+  <div class="card" style="border:1.5px solid var(--red)">
+    <h2 style="color:var(--red)">&#128683; Stok Habis <span id="s-habis-lbl" style="font-size:13px;font-weight:400;color:var(--muted)"></span></h2>
+    <table><thead><tr><th>Nama</th><th>Satuan</th><th>Exp Terdekat</th></tr></thead>
+    <tbody id="tb-habis"><tr><td colspan="3" style="text-align:center;color:var(--muted)">Memuat...</td></tr></tbody></table>
   </div>
 
   <!-- Stok Menipis -->
@@ -668,7 +676,17 @@ document.querySelectorAll(".tab").forEach(tab=>{
 // ── STOK ─────────────────────────────────────────────────
 async function loadStok(){
   const snap=await getDocs(query(collection(db,C_OBAT),orderBy("nama")));
-  stokList=snap.docs.map(d=>({id:d.id,...d.data()}));
+  stokList=snap.docs.map(d=>{
+    const data=d.data();
+    // Hitung ulang total stok dari semua batch yang masih ada qty > 0
+    if(data.batches && Object.keys(data.batches).length>0){
+      const totalDariBatch = Object.values(data.batches)
+        .reduce((s,b)=>s+Math.max(0,parseInt(b.qty)||0), 0);
+      // Gunakan nilai batch jika lebih akurat (ada batch data)
+      data.stok = totalDariBatch;
+    }
+    return {id:d.id,...data};
+  });
   renderTblStok();
   buildObatLookup();
   return stokList;
@@ -2458,10 +2476,15 @@ async function loadDashboard(){
   // Stat statis
   el("s-jenis").textContent=stokList.length;
   
-  // Stok menipis: non-strip <4, strip <6
+  // Stok habis (total stok per jenis = 0)
+  const habis = stokList.filter(o=>(o.stok||0)<=0);
+  el("s-habis").textContent = habis.length;
+  el("s-habis-lbl").textContent = habis.length ? "("+habis.length+" jenis)" : "";
+
+  // Stok menipis: total stok per jenis < threshold, bukan 0
   const kurang=stokList.filter(o=>{
     const stok=o.stok||0;
-    if(stok<=0) return false;
+    if(stok<=0) return false; // sudah habis, masuk kategori habis
     const nama=(o.nama||"").toUpperCase();
     if(nama.includes("STRIP")&&(nama.includes("KOLESTEROL")||nama.includes("GULA DARAH")||nama.includes("ASAM URAT"))){
       return stok<6;
@@ -2497,12 +2520,23 @@ async function loadDashboard(){
   }
   
   // Tabel stok menipis
+  // Render tabel habis
+  const tbHabis=el("tb-habis");
+  tbHabis.innerHTML=habis.length
+    ? habis.map(o=>`<tr>
+        <td><strong>${esc(o.nama)}</strong></td>
+        <td>${esc(o.satuan||"-")}</td>
+        <td>${expBadge(getExpTerdekat(o))}</td>
+      </tr>`).join("")
+    : '<tr><td colspan="3" style="text-align:center;color:var(--green)">Tidak ada stok yang habis &#10003;</td></tr>';
+
+  // Render tabel menipis
   const tb=el("tb-rendah");
   tb.innerHTML=kurang.length
     ? kurang.map(o=>`<tr>
         <td><strong>${esc(o.nama)}</strong></td>
         <td>${esc(o.satuan||"-")}</td>
-        <td><span class="badge ${(o.stok||0)<=0?"out":(o.stok||0)<4?"low":"ok"}">${o.stok||0}</span></td>
+        <td><span class="badge low">${o.stok||0}</span></td>
         <td>${expBadge(getExpTerdekat(o))}</td>
       </tr>`).join("")
     : '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Semua stok aman &#10003;</td></tr>';
