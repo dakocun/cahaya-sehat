@@ -680,13 +680,23 @@ async function loadStok(){
     const data=d.data();
     // Hitung ulang total stok dari semua batch yang masih ada qty > 0
     if(data.batches && Object.keys(data.batches).length>0){
-      const totalDariBatch = Object.values(data.batches)
-        .filter(b=>b && typeof b === 'object')
-        .reduce((s,b)=>{
-          const q = Number(b.qty);
-          return s + (isNaN(q) ? 0 : Math.max(0, q));
-        }, 0);
-      data.stok = totalDariBatch;
+      const nama=(data.nama||"").toUpperCase();
+      // Strip layanan: stoknya dikurangi langsung di field stok (bukan per batch)
+      // jadi tetap pakai field stok dari Firestore
+      const isStripLayanan = nama.includes("STRIP") && (
+        nama.includes("GULA DARAH") || nama.includes("KOLESTEROL") || nama.includes("ASAM URAT")
+      );
+      if(!isStripLayanan){
+        // Obat biasa: hitung dari batch
+        const totalDariBatch = Object.values(data.batches)
+          .filter(b=>b && typeof b === 'object')
+          .reduce((s,b)=>{
+            const q = Number(b.qty);
+            return s + (isNaN(q) ? 0 : Math.max(0, q));
+          }, 0);
+        data.stok = totalDariBatch;
+      }
+      // Strip layanan: biarkan field stok dari Firestore
     }
     return {id:d.id,...data};
   });
