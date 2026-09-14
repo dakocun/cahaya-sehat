@@ -422,8 +422,8 @@ tr.separator:hover td{background:var(--navy)!important}
   <div class="stats" style="margin-top:4px">
     <div class="stat"><div class="val" id="keu-masuk">-</div><div class="lbl">Omzet</div></div>
     <div class="stat"><div class="val" id="keu-keluar">-</div><div class="lbl">Modal Belanja</div></div>
-    <div class="stat" id="keu-profit-bersih-stat" style="background:#fefce8"><div class="val" id="keu-profit-bersih" style="color:var(--yellow)">-</div><div class="lbl">Saldo</div></div>
-    <div class="stat" id="keu-profit-stat"><div class="val" id="keu-profit">-</div><div class="lbl">Profit</div></div>
+    <div class="stat" id="keu-profit-kotor-stat"><div class="val" id="keu-profit-kotor">-</div><div class="lbl">Surplus Kas</div></div>
+    <div class="stat" id="keu-profit-bersih-stat"><div class="val" id="keu-profit-bersih">-</div><div class="lbl">Laba Kotor</div></div>
   </div>
 </div>
 
@@ -3383,11 +3383,10 @@ async function loadKeuData(){
     el("keu-keluar").textContent = rp(0);
     el("keu-profit-kotor").textContent = rp(0);
     el("keu-profit-bersih").textContent = rp(0);
-    el("keu-profit").textContent = rp(0);
     el("keu-profit-kotor-stat").style.background = "#dcfce7";
     el("keu-profit-kotor-stat").querySelector(".val").style.color = "var(--green)";
-    el("keu-profit-bersih-stat").style.background = "#fefce8";
-    el("keu-profit-bersih-stat").querySelector(".val").style.color = "var(--yellow)";
+    el("keu-profit-bersih-stat").style.background = "#dcfce7";
+    el("keu-profit-bersih-stat").querySelector(".val").style.color = "var(--green)";
     return;
   }
 
@@ -3435,17 +3434,8 @@ async function loadKeuData(){
   
   el("keu-masuk").textContent = rp(omzet);
   el("keu-keluar").textContent = rp(modalBelanja);
-  const saldo = totalMasuk - totalKeluar;
-  el("keu-profit-bersih").textContent = rp(saldo);   // Saldo = semua masuk - semua keluar
-  el("keu-profit").textContent = rp(labaKotor);       // Profit = sum untung penjualan
-  const profitEl = el("keu-profit-stat");
-  if(profitEl){
-    profitEl.style.background = labaKotor >= 0 ? "#dcfce7" : "#fee2e2";
-    profitEl.querySelector(".val").style.color = labaKotor >= 0 ? "var(--green)" : "var(--red)";
-  }
-  // Update saldo color
-  el("keu-profit-bersih-stat").style.background = "#fefce8";
-  el("keu-profit-bersih-stat").querySelector(".val").style.color = saldo >= 0 ? "var(--yellow)" : "var(--red)";
+  el("keu-profit-kotor").textContent = rp(surplusKas);
+  el("keu-profit-bersih").textContent = rp(labaKotor);
 
   console.log("✅ UI Updated - surplusKas:", surplusKas, "| labaKotor:", labaKotor);
   console.log("✅ DOM check:", document.getElementById("keu-profit-kotor")?.textContent);
@@ -3453,8 +3443,8 @@ async function loadKeuData(){
   el("keu-profit-kotor-stat").style.background = surplusKas >= 0 ? "#dcfce7" : "#fee2e2";
   el("keu-profit-kotor-stat").querySelector(".val").style.color = surplusKas >= 0 ? "var(--green)" : "var(--red)";
   
-  el("keu-profit-bersih-stat").style.background = "#fefce8";
-  el("keu-profit-bersih-stat").querySelector(".val").style.color = "var(--yellow)";
+  el("keu-profit-bersih-stat").style.background = labaKotor >= 0 ? "#dcfce7" : "#fee2e2";
+  el("keu-profit-bersih-stat").querySelector(".val").style.color = labaKotor >= 0 ? "var(--green)" : "var(--red)";
 
   tb.querySelectorAll("[data-hapus-keu]").forEach(btn => {
     btn.addEventListener("click", () => {
