@@ -3437,16 +3437,18 @@ async function loadKeuData(){
   el("keu-masuk").textContent = rp(omzet);
   el("keu-keluar").textContent = rp(modalBelanja);
   el("keu-profit-kotor").textContent = rp(surplusKas);
-  el("keu-profit-bersih").textContent = rp(surplusKas); // Saldo = surplus kas
-  el("keu-profit").textContent = rp(labaKotor); // Profit = keuntungan per item terjual
+  const saldo = totalMasuk - totalKeluar; // Saldo = semua masuk - semua keluar (incl modal/tarik)
+  el("keu-profit-bersih").textContent = rp(saldo);
+  el("keu-profit").textContent = rp(labaKotor); // Profit = sum keuntungan per item terjual
   const profitEl = el("keu-profit-stat");
   if(profitEl){
     profitEl.style.background = labaKotor >= 0 ? "#dcfce7" : "#fee2e2";
     profitEl.querySelector(".val").style.color = labaKotor >= 0 ? "var(--green)" : "var(--red)";
   }
   // Update saldo color
+  const saldoVal = totalMasuk - totalKeluar;
   el("keu-profit-bersih-stat").style.background = "#fefce8";
-  el("keu-profit-bersih-stat").querySelector(".val").style.color = surplusKas >= 0 ? "var(--yellow)" : "var(--red)";
+  el("keu-profit-bersih-stat").querySelector(".val").style.color = saldoVal >= 0 ? "var(--yellow)" : "var(--red)";
 
   console.log("✅ UI Updated - surplusKas:", surplusKas, "| labaKotor:", labaKotor);
   console.log("✅ DOM check:", document.getElementById("keu-profit-kotor")?.textContent);
