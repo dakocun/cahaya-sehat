@@ -3387,8 +3387,8 @@ async function loadKeuData(){
     el("keu-profit").textContent = rp(0);
     el("keu-profit-kotor-stat").style.background = "#dcfce7";
     el("keu-profit-kotor-stat").querySelector(".val").style.color = "var(--green)";
-    el("keu-profit-bersih-stat").style.background = "#dcfce7";
-    el("keu-profit-bersih-stat").querySelector(".val").style.color = "var(--green)";
+    el("keu-profit-bersih-stat").style.background = "#fefce8";
+    el("keu-profit-bersih-stat").querySelector(".val").style.color = "var(--yellow)";
     return;
   }
 
@@ -3437,13 +3437,16 @@ async function loadKeuData(){
   el("keu-masuk").textContent = rp(omzet);
   el("keu-keluar").textContent = rp(modalBelanja);
   el("keu-profit-kotor").textContent = rp(surplusKas);
-  el("keu-profit-bersih").textContent = rp(labaKotor);
-  el("keu-profit").textContent = rp(labaKotor);
+  el("keu-profit-bersih").textContent = rp(surplusKas); // Saldo = surplus kas
+  el("keu-profit").textContent = rp(labaKotor); // Profit = keuntungan per item terjual
   const profitEl = el("keu-profit-stat");
   if(profitEl){
     profitEl.style.background = labaKotor >= 0 ? "#dcfce7" : "#fee2e2";
     profitEl.querySelector(".val").style.color = labaKotor >= 0 ? "var(--green)" : "var(--red)";
   }
+  // Update saldo color
+  el("keu-profit-bersih-stat").style.background = "#fefce8";
+  el("keu-profit-bersih-stat").querySelector(".val").style.color = surplusKas >= 0 ? "var(--yellow)" : "var(--red)";
 
   console.log("✅ UI Updated - surplusKas:", surplusKas, "| labaKotor:", labaKotor);
   console.log("✅ DOM check:", document.getElementById("keu-profit-kotor")?.textContent);
@@ -3451,8 +3454,8 @@ async function loadKeuData(){
   el("keu-profit-kotor-stat").style.background = surplusKas >= 0 ? "#dcfce7" : "#fee2e2";
   el("keu-profit-kotor-stat").querySelector(".val").style.color = surplusKas >= 0 ? "var(--green)" : "var(--red)";
   
-  el("keu-profit-bersih-stat").style.background = labaKotor >= 0 ? "#dcfce7" : "#fee2e2";
-  el("keu-profit-bersih-stat").querySelector(".val").style.color = labaKotor >= 0 ? "var(--green)" : "var(--red)";
+  el("keu-profit-bersih-stat").style.background = "#fefce8";
+  el("keu-profit-bersih-stat").querySelector(".val").style.color = "var(--yellow)";
 
   tb.querySelectorAll("[data-hapus-keu]").forEach(btn => {
     btn.addEventListener("click", () => {
