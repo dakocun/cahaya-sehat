@@ -423,7 +423,8 @@ tr.separator:hover td{background:var(--navy)!important}
     <div class="stat"><div class="val" id="keu-masuk">-</div><div class="lbl">Omzet</div></div>
     <div class="stat"><div class="val" id="keu-keluar">-</div><div class="lbl">Modal Belanja</div></div>
     <div class="stat" id="keu-profit-kotor-stat"><div class="val" id="keu-profit-kotor">-</div><div class="lbl">Surplus Kas</div></div>
-    <div class="stat" id="keu-profit-bersih-stat"><div class="val" id="keu-profit-bersih">-</div><div class="lbl">Laba Kotor</div></div>
+    <div class="stat" id="keu-profit-bersih-stat"><div class="val" id="keu-profit-bersih">-</div><div class="lbl">Saldo</div></div>
+    <div class="stat" id="keu-profit-stat"><div class="val" id="keu-profit">-</div><div class="lbl">Profit</div></div>
   </div>
 </div>
 
@@ -3383,6 +3384,7 @@ async function loadKeuData(){
     el("keu-keluar").textContent = rp(0);
     el("keu-profit-kotor").textContent = rp(0);
     el("keu-profit-bersih").textContent = rp(0);
+    el("keu-profit").textContent = rp(0);
     el("keu-profit-kotor-stat").style.background = "#dcfce7";
     el("keu-profit-kotor-stat").querySelector(".val").style.color = "var(--green)";
     el("keu-profit-bersih-stat").style.background = "#dcfce7";
@@ -3436,6 +3438,12 @@ async function loadKeuData(){
   el("keu-keluar").textContent = rp(modalBelanja);
   el("keu-profit-kotor").textContent = rp(surplusKas);
   el("keu-profit-bersih").textContent = rp(labaKotor);
+  el("keu-profit").textContent = rp(labaKotor);
+  const profitEl = el("keu-profit-stat");
+  if(profitEl){
+    profitEl.style.background = labaKotor >= 0 ? "#dcfce7" : "#fee2e2";
+    profitEl.querySelector(".val").style.color = labaKotor >= 0 ? "var(--green)" : "var(--red)";
+  }
 
   console.log("✅ UI Updated - surplusKas:", surplusKas, "| labaKotor:", labaKotor);
   console.log("✅ DOM check:", document.getElementById("keu-profit-kotor")?.textContent);
