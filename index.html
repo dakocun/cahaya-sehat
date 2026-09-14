@@ -422,8 +422,7 @@ tr.separator:hover td{background:var(--navy)!important}
   <div class="stats" style="margin-top:4px">
     <div class="stat"><div class="val" id="keu-masuk">-</div><div class="lbl">Omzet</div></div>
     <div class="stat"><div class="val" id="keu-keluar">-</div><div class="lbl">Modal Belanja</div></div>
-    <div class="stat" id="keu-profit-kotor-stat"><div class="val" id="keu-profit-kotor">-</div><div class="lbl">Surplus Kas</div></div>
-    <div class="stat" id="keu-profit-bersih-stat"><div class="val" id="keu-profit-bersih">-</div><div class="lbl">Saldo</div></div>
+    <div class="stat" id="keu-profit-bersih-stat" style="background:#fefce8"><div class="val" id="keu-profit-bersih" style="color:var(--yellow)">-</div><div class="lbl">Saldo</div></div>
     <div class="stat" id="keu-profit-stat"><div class="val" id="keu-profit">-</div><div class="lbl">Profit</div></div>
   </div>
 </div>
@@ -3436,10 +3435,9 @@ async function loadKeuData(){
   
   el("keu-masuk").textContent = rp(omzet);
   el("keu-keluar").textContent = rp(modalBelanja);
-  el("keu-profit-kotor").textContent = rp(surplusKas);
-  const saldo = totalMasuk - totalKeluar; // Saldo = semua masuk - semua keluar (incl modal/tarik)
+  const saldo = totalMasuk - totalKeluar;
   el("keu-profit-bersih").textContent = rp(saldo);
-  el("keu-profit").textContent = rp(labaKotor); // Profit = sum keuntungan per item terjual
+  el("keu-profit").textContent = rp(labaKotor);
   const profitEl = el("keu-profit-stat");
   if(profitEl){
     profitEl.style.background = labaKotor >= 0 ? "#dcfce7" : "#fee2e2";
