@@ -307,6 +307,10 @@ tr.separator:hover td{background:var(--navy)!important}
       <div class="field"><label>Tanggal Belanja</label><input id="b-tgl" type="date"></div>
       <div class="field"><label>Keterangan (opsional)</label><input id="b-ket" type="text"></div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:16px;cursor:pointer">
+      <input id="b-modal-pribadi" type="checkbox" style="width:18px;height:18px;flex:none">
+      <span style="font-size:13px;color:var(--navy)">Pakai modal pribadi <span style="color:var(--muted)">(tidak mengurangi saldo kas)</span></span>
+    </label>
     <div id="belanja-items-wrap"></div>
     <button id="btn-tambah-bitem" class="btn btn-outline btn-sm" style="margin-bottom:16px">+ Tambah Item</button>
     <div style="background:var(--bg);border-radius:8px;padding:14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
@@ -409,10 +413,11 @@ tr.separator:hover td{background:var(--navy)!important}
             <th style="text-align:center">No. Nota / Ket</th>
             <th style="text-align:center">Uang Masuk</th>
             <th style="text-align:center">Uang Keluar</th>
+            <th style="text-align:center">Modal Pribadi</th>
             <th></th>
           </tr>
         </thead>
-        <tbody id="tb-keuangan"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Memuat...</td></tr></tbody>
+        <tbody id="tb-keuangan"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Memuat...</td></tr></tbody>
         <tfoot id="tf-keuangan"></tfoot>
       </table>
     </div>
@@ -421,9 +426,9 @@ tr.separator:hover td{background:var(--navy)!important}
   <!-- Summary -->
   <div class="stats" style="margin-top:4px">
     <div class="stat"><div class="val" id="keu-masuk">-</div><div class="lbl">Omzet</div></div>
-    <div class="stat"><div class="val" id="keu-keluar">-</div><div class="lbl">Modal Belanja</div></div>
-    <div class="stat" id="keu-profit-kotor-stat"><div class="val" id="keu-profit-kotor">-</div><div class="lbl">Surplus Kas</div></div>
-    <div class="stat" id="keu-profit-bersih-stat"><div class="val" id="keu-profit-bersih">-</div><div class="lbl">Laba Kotor</div></div>
+    <div class="stat"><div class="val" id="keu-keluar">-</div><div class="lbl">Total Belanja</div></div>
+    <div class="stat" id="keu-profit-kotor-stat"><div class="val" id="keu-profit-kotor">-</div><div class="lbl">Saldo Kas</div></div>
+    <div class="stat" id="keu-profit-bersih-stat"><div class="val" id="keu-profit-bersih">-</div><div class="lbl">Profit</div></div>
   </div>
 </div>
 
@@ -442,6 +447,10 @@ tr.separator:hover td{background:var(--navy)!important}
         <input id="edit-beli-ket" type="text">
       </div>
     </div>
+    <label style="display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;cursor:pointer">
+      <input id="edit-beli-modal-pribadi" type="checkbox" style="width:18px;height:18px;flex:none">
+      <span style="font-size:13px;color:var(--navy)">Pakai modal pribadi <span style="color:var(--muted)">(tidak mengurangi saldo kas)</span></span>
+    </label>
     <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">Item Belanja</div>
     <div id="edit-beli-items"></div>
     <div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:12px;display:flex;justify-content:space-between">
@@ -1238,6 +1247,7 @@ function resetBelanjaForm(){
   const today=new Date().toISOString().split("T")[0];
   el("b-tgl").value = todayLocal();
   el("b-ket").value="";
+  if(el("b-modal-pribadi")) el("b-modal-pribadi").checked=false;
   renderBelanjaItems();
 }
 
@@ -1399,6 +1409,7 @@ el("btn-simpan-belanja").addEventListener("click", async ()=>{
   try {
     const tgl=el("b-tgl").value;
     const ket=el("b-ket").value.trim().toUpperCase();
+    const modalPribadi=el("b-modal-pribadi")?.checked||false;
     const valid=belanjaItems.filter(i=>i.nama.trim()&&i.qty>0);
     if(!valid.length){
       toast("Isi minimal 1 item");
@@ -1424,7 +1435,7 @@ el("btn-simpan-belanja").addEventListener("click", async ()=>{
     });
 
     // Simpan riwayat belanja
-    await addDoc(collection(db,C_BELI),{tanggal:tgl,keterangan:ket,items:detail,total,created:Timestamp.now()});
+    await addDoc(collection(db,C_BELI),{tanggal:tgl,keterangan:ket,items:detail,total,modalPribadi,created:Timestamp.now()});
 
     // Update / tambah stok obat
     let gagalItems = [];
@@ -2348,9 +2359,10 @@ const filterByTgl = (tgl) => {
     const dt = d.data();
     const itemStr = dt.items?.map(i => esc(i.nama) + " x" + i.qty).join(", ") || "-";
     totalBeli += dt.total || 0;
+    const pribadiBadge = dt.modalPribadi ? `<br><span style="display:inline-block;margin-top:3px;font-size:10px;font-weight:600;color:var(--teal);background:#e6f7f5;border-radius:4px;padding:1px 6px">MODAL PRIBADI</span>` : "";
     return `<tr>
       <td style="white-space:nowrap;font-size:13px;font-weight:500">${formatTgl(dt.tanggal)}</td>
-      <td style="font-size:12px">${esc(dt.keterangan || "-")}</td>
+      <td style="font-size:12px">${esc(dt.keterangan || "-")}${pribadiBadge}</td>
       <td style="font-size:12px">${itemStr}</td>
       <td style="white-space:nowrap;font-size:14px;font-weight:600">${rp(dt.total)}</td>
       <td style="display:flex;gap:4px">
@@ -2803,6 +2815,7 @@ async function editBelanja(id){
   el("edit-beli-id-label").textContent = "Tanggal: " + (dt.tanggal||"-");
   el("edit-beli-tgl").value = dt.tanggal||"";
   el("edit-beli-ket").value = dt.keterangan||"";
+  el("edit-beli-modal-pribadi").checked = !!dt.modalPribadi;
   renderEditBeliItems();
   el("modal-edit-beli").style.display = "flex";
 }
@@ -2892,6 +2905,7 @@ el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
   const {id, originalItems, items} = editBeliData;
   const tgl = el("edit-beli-tgl").value;
   const ket = el("edit-beli-ket").value.trim().toUpperCase();
+  const modalPribadi = el("edit-beli-modal-pribadi")?.checked||false;
 
   // Hitung diff stok: kembalikan stok lama, kurangi stok baru
   const stokMap = {};
@@ -2953,7 +2967,7 @@ el("btn-simpan-edit-beli").addEventListener("click", async ()=>{
   
   console.log("📤 Total dihitung:", total, "| Items:", items);
 
-  await updateDoc(doc(db,C_BELI,id),{items,total,tanggal:tgl,keterangan:ket,updated:Timestamp.now()});
+  await updateDoc(doc(db,C_BELI,id),{items,total,tanggal:tgl,keterangan:ket,modalPribadi,updated:Timestamp.now()});
   console.log("✅ Belanja diupdate:", id, total);
   toast("Belanja diperbarui!");
   el("modal-edit-beli").style.display="none";
@@ -3125,7 +3139,7 @@ async function downloadExcelRekap(){
       ? query(collection(db,C_BELI),where("created",">=",Timestamp.fromDate(start)),orderBy("created","desc"))
       : query(collection(db,C_BELI),orderBy("created","desc"))
   );
-  const rowsBeli=[["No","Tanggal","Keterangan","Detail Item","Total Belanja"]];
+  const rowsBeli=[["No","Tanggal","Keterangan","Detail Item","Total Belanja","Modal Pribadi"]];
   let totBeli=0;
   const docsB = start
     ? snapBeli.docs.filter(d=>(d.data().tanggal||"")>=start.toISOString().split("T")[0])
@@ -3134,7 +3148,7 @@ async function downloadExcelRekap(){
     const dt=d.data();
     const detail=dt.items?.map(it=>it.nama+" x"+it.qty).join(", ")||"-";
     totBeli+=dt.total||0;
-    rowsBeli.push([i+1,dt.tanggal||"-",dt.keterangan||"-",detail,dt.total||0]);
+    rowsBeli.push([i+1,dt.tanggal||"-",dt.keterangan||"-",detail,dt.total||0,dt.modalPribadi?"YA":""]);
   });
   rowsBeli.push([]);
   rowsBeli.push(["","","","TOTAL",totBeli]);
@@ -3143,7 +3157,7 @@ async function downloadExcelRekap(){
   const ws1=XLSX.utils.aoa_to_sheet(rowsJual);
   ws1["!cols"]=[{wch:4},{wch:20},{wch:14},{wch:12},{wch:35},{wch:14},{wch:14},{wch:22}];
   const ws2=XLSX.utils.aoa_to_sheet(rowsBeli);
-  ws2["!cols"]=[{wch:4},{wch:12},{wch:18},{wch:35},{wch:14}];
+  ws2["!cols"]=[{wch:4},{wch:12},{wch:18},{wch:35},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws1,"Penjualan");
   XLSX.utils.book_append_sheet(wb,ws2,"Pembelian");
 
@@ -3170,37 +3184,40 @@ async function downloadExcelKeu(){
   }
   const [snapTrx,snapBeli,snapKeu]=await Promise.all([getDocs(qTrx),getDocs(qBeli),getDocs(qKeu)]);
 
-  const rows=[["No","Tanggal","Jenis","No. Nota / Keterangan","Uang Masuk","Uang Keluar"]];
+  const rows=[["No","Tanggal","Jenis","No. Nota / Keterangan","Uang Masuk","Uang Keluar","Modal Pribadi"]];
   const allRows=[];
 
   snapTrx.docs.forEach(d=>{
     const dt=d.data();
     const tgl = dt.tgl || dt.tanggal || dt.waktu?.toDate().toISOString().split("T")[0] || "-";
     const isPrib=(dt.bayar||"")==="PRIBADI";
-    allRows.push({sort:dt.waktu?.toDate()||new Date(tgl),tgl,jenis:"Penjualan",nota:d.id.slice(-8).toUpperCase()+(dt.pembeli?" - "+dt.pembeli:""),masuk:isPrib?0:(dt.total||0),keluar:0});
+    allRows.push({sort:dt.waktu?.toDate()||new Date(tgl),tgl,jenis:"Penjualan",nota:d.id.slice(-8).toUpperCase()+(dt.pembeli?" - "+dt.pembeli:""),masuk:isPrib?0:(dt.total||0),keluar:0,modalPribadi:false});
   });
   snapBeli.docs.forEach(d=>{
     const dt=d.data();
-    allRows.push({sort:dt.created?.toDate()||new Date(dt.tanggal||""),tgl:dt.tanggal||"-",jenis:"Belanja",nota:dt.keterangan||"-",masuk:0,keluar:dt.total||0});
+    allRows.push({sort:dt.created?.toDate()||new Date(dt.tanggal||""),tgl:dt.tanggal||"-",jenis:"Belanja",nota:dt.keterangan||"-",masuk:0,keluar:dt.total||0,modalPribadi:!!dt.modalPribadi});
   });
   snapKeu.docs.forEach(d=>{
     const dt=d.data();
-    allRows.push({sort:dt.waktu?.toDate()||new Date(dt.tanggal||""),tgl:dt.tanggal||"-",jenis:dt.tipe==="modal"?"Tambah Modal":"Tarik Saldo",nota:dt.keterangan||"-",masuk:dt.tipe==="modal"?dt.jumlah:0,keluar:dt.tipe==="tarik"?dt.jumlah:0});
+    allRows.push({sort:dt.waktu?.toDate()||new Date(dt.tanggal||""),tgl:dt.tanggal||"-",jenis:dt.tipe==="modal"?"Tambah Modal":"Tarik Saldo",nota:dt.keterangan||"-",masuk:dt.tipe==="modal"?dt.jumlah:0,keluar:dt.tipe==="tarik"?dt.jumlah:0,modalPribadi:false});
   });
 
   allRows.sort((a,b)=>a.sort-b.sort);
-  let totMasuk=0,totKeluar=0;
+  let totMasuk=0,totBelanja=0,totBelanjaNonPribadi=0,totTarik=0;
   allRows.forEach((r,i)=>{
-    totMasuk+=r.masuk;totKeluar+=r.keluar;
-    rows.push([i+1,r.tgl,r.jenis,r.nota,r.masuk||"",r.keluar||""]);
+    totMasuk+=r.masuk;
+    if(r.jenis==="Belanja"){ totBelanja+=r.keluar; if(!r.modalPribadi) totBelanjaNonPribadi+=r.keluar; }
+    if(r.jenis==="Tarik Saldo") totTarik+=r.keluar;
+    rows.push([i+1,r.tgl,r.jenis,r.nota,r.masuk||"",r.keluar||"",r.modalPribadi?"YA":""]);
   });
+  const saldoKas = totMasuk-totBelanjaNonPribadi-totTarik;
   rows.push([]);
-  rows.push(["","","","TOTAL UANG MASUK",totMasuk,""]);
-  rows.push(["","","","TOTAL UANG KELUAR","",totKeluar]);
-  rows.push(["","","","SALDO SEHARUSNYA",totMasuk-totKeluar,""]);
+  rows.push(["","","","TOTAL OMZET",totMasuk,""]);
+  rows.push(["","","","TOTAL BELANJA","",totBelanja]);
+  rows.push(["","","","SALDO KAS",saldoKas,""]);
 
   const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"]=[{wch:4},{wch:12},{wch:15},{wch:30},{wch:16},{wch:16}];
+  ws["!cols"]=[{wch:4},{wch:12},{wch:15},{wch:30},{wch:16},{wch:16},{wch:14}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Keuangan");
   const periode=keuPeriod==="bulan"
@@ -3313,7 +3330,7 @@ async function loadKeuData(){
   const range = getKeuRange();
   console.log("📅 Range:", range); // ⬅ TAMBAH
   const tb = el("tb-keuangan");
-  tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Memuat...</td></tr>';
+  tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:16px">Memuat...</td></tr>';
 
   const qTrxAll = query(collection(db,C_TRX), orderBy("tgl","desc"));
   const qKeuAll = query(collection(db,C_KEU), orderBy("tanggal","desc"));
@@ -3357,6 +3374,7 @@ async function loadKeuData(){
       waktuSort: new Date(tgl + "T12:00:00"),
       jenis: "Belanja", nota: "-",
       masuk: 0, keluar: dt.total||0,
+      modalPribadi: !!dt.modalPribadi,
       ket: dt.keterangan||"", raw: dt
     });
   });
@@ -3378,7 +3396,7 @@ async function loadKeuData(){
   rows.sort((a,b) => b.waktuSort - a.waktuSort);
 
   if(!rows.length){
-    tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Belum ada data</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">Belum ada data</td></tr>';
     el("keu-masuk").textContent = rp(0);
     el("keu-keluar").textContent = rp(0);
     el("keu-profit-kotor").textContent = rp(0);
@@ -3390,12 +3408,21 @@ async function loadKeuData(){
     return;
   }
 
-  let totalMasuk = 0, totalKeluar = 0;
+  let totalMasuk = 0, totalKeluar = 0, totalBelanjaNonPribadi = 0, totalTarik = 0;
   tb.innerHTML = rows.map((row,i) => {
     totalMasuk += row.masuk; totalKeluar += row.keluar;
+    if(row.src==="beli" && !row.modalPribadi) totalBelanjaNonPribadi += row.keluar;
+    if(row.src==="keu" && row.jenis==="Tarik Saldo") totalTarik += row.keluar;
     const masukCell=row.masuk>0?`<span style="color:var(--teal);font-weight:600">${rp(row.masuk)}</span>`:`<span style="color:var(--muted)">-</span>`;
-    const keluarCell=row.keluar>0?`<span style="color:var(--red);font-weight:600">${rp(row.keluar)}</span>`:`<span style="color:var(--muted)">-</span>`;
+    const keluarCell=row.keluar>0
+      ? (row.modalPribadi
+          ? `<span style="color:var(--muted);font-weight:600;text-decoration:line-through">${rp(row.keluar)}</span>`
+          : `<span style="color:var(--red);font-weight:600">${rp(row.keluar)}</span>`)
+      : `<span style="color:var(--muted)">-</span>`;
     const jenisColor = row.jenis === "Penjualan" ? "color:var(--teal)" : row.jenis === "Belanja" ? "color:var(--red)" : row.jenis === "Tambah Modal" ? "color:var(--green)" : "color:var(--yellow)";
+    const pribadiCell = row.src==="beli"
+      ? `<input type="checkbox" data-toggle-pribadi="${row.id}" ${row.modalPribadi?"checked":""} style="width:18px;height:18px;cursor:pointer">`
+      : `<span style="color:var(--muted)">-</span>`;
     const hapusBtn = row.src === "keu"
       ? `<button class="btn btn-red btn-sm" data-hapus-keu="${row.id}" title="Hapus">&#128465;</button>`
       :``;
@@ -3410,38 +3437,34 @@ async function loadKeuData(){
       </td>
       <td style="text-align:${row.masuk>0?'right':'center'}">${masukCell}</td>
       <td style="text-align:${row.keluar>0?'right':'center'}">${keluarCell}</td>
+      <td style="text-align:center">${pribadiCell}</td>
       <td>${hapusBtn}</td>
     </tr>`;
   }).join("");
 
-  console.log("📊 DEBUG SURPLUS:", {
-    periode: keuPeriod,
-    totalMasuk,
-    totalKeluar,
-    surplusKas: totalMasuk - totalKeluar,
-    jumlahTrx: snapTrx.docs.length,
-    jumlahBeli: snapBeli.docs.length
-  });
-
-  const modalBelanja = totalKeluar;
   const omzet = totalMasuk;
-  const surplusKas = omzet - modalBelanja;
-  
+  const totalBelanja = totalKeluar - totalTarik; // semua belanja (termasuk yg pakai modal pribadi), tidak termasuk tarik saldo
+  const saldoKas = omzet - totalBelanjaNonPribadi - totalTarik;
+
   let labaKotor = 0;
   snapTrx.docs.forEach(d => {
     labaKotor += d.data().untung || 0;
   });
-  
+
+  console.log("📊 DEBUG SALDO KAS:", {
+    periode: keuPeriod,
+    omzet, totalBelanja, totalBelanjaNonPribadi, totalTarik, saldoKas, labaKotor,
+    jumlahTrx: snapTrx.docs.length,
+    jumlahBeli: snapBeli.docs.length
+  });
+
   el("keu-masuk").textContent = rp(omzet);
-  el("keu-keluar").textContent = rp(modalBelanja);
-  el("keu-profit-kotor").textContent = rp(surplusKas);
+  el("keu-keluar").textContent = rp(totalBelanja);
+  el("keu-profit-kotor").textContent = rp(saldoKas);
   el("keu-profit-bersih").textContent = rp(labaKotor);
 
-  console.log("✅ UI Updated - surplusKas:", surplusKas, "| labaKotor:", labaKotor);
-  console.log("✅ DOM check:", document.getElementById("keu-profit-kotor")?.textContent);
-  
-  el("keu-profit-kotor-stat").style.background = surplusKas >= 0 ? "#dcfce7" : "#fee2e2";
-  el("keu-profit-kotor-stat").querySelector(".val").style.color = surplusKas >= 0 ? "var(--green)" : "var(--red)";
+  el("keu-profit-kotor-stat").style.background = saldoKas >= 0 ? "#dcfce7" : "#fee2e2";
+  el("keu-profit-kotor-stat").querySelector(".val").style.color = saldoKas >= 0 ? "var(--green)" : "var(--red)";
   
   el("keu-profit-bersih-stat").style.background = labaKotor >= 0 ? "#dcfce7" : "#fee2e2";
   el("keu-profit-bersih-stat").querySelector(".val").style.color = labaKotor >= 0 ? "var(--green)" : "var(--red)";
@@ -3452,9 +3475,27 @@ async function loadKeuData(){
     });
   });
 
+  tb.querySelectorAll("[data-toggle-pribadi]").forEach(cb => {
+    cb.addEventListener("change", async function(){
+      const id = this.dataset.togglePribadi;
+      const checked = this.checked;
+      this.disabled = true;
+      try {
+        await updateDoc(doc(db,C_BELI,id),{modalPribadi:checked});
+        toast(checked ? "Ditandai modal pribadi" : "Ditandai belanja biasa");
+        await loadKeuData();
+      } catch(err){
+        console.error("Gagal update modal pribadi:", err);
+        toast("❌ Gagal menyimpan: " + err.message);
+        this.checked = !checked;
+        this.disabled = false;
+      }
+    });
+  });
+
  } catch(e) {
     console.error("❌ ERROR di loadKeuData:", e.message, e.stack);
-    tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:20px">Error: ' + e.message + '</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:20px">Error: ' + e.message + '</td></tr>';
   }
 }
 
